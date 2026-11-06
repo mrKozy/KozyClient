@@ -1,0 +1,28 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="GPL-3.0"
+
+[[mods]]
+modId="redstarclient"
+version="1.0.0"
+displayName="☭ Red Star Client"
+description="Communist-themed utility client mod for Minecraft 26.3"
+authors="Red Star Collective"
+logoFile="assets/redstarclient/icon.png"
+
+[[mixins]]
+config="redstarclient.mixins.json"
+
+[[dependencies.redstarclient]]
+modId="neoforge"
+type="required"
+versionRange="[26.3,)"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.redstarclient]]
+modId="minecraft"
+type="required"
+versionRange="[26.3,26.4)"
+ordering="NONE"
+side="CLIENT"

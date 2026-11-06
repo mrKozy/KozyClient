@@ -1,0 +1,59 @@
+// ☭ Red Star Client — Fabric Module
+plugins {
+    id 'fabric-loom'
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraftVersion}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${fabricLoaderVersion}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
+
+    // ImGui Java bindings (embed directly into JAR since ImGuiMC isn't compatible with 1.21.4)
+    include(implementation("io.github.spair:imgui-java-binding:${imguiJavaVersion}"))
+    include(implementation("io.github.spair:imgui-java-lwjgl3:${imguiJavaVersion}"))
+    include(implementation("io.github.spair:imgui-java-natives-windows:${imguiJavaVersion}"))
+
+    // Common module
+    implementation project(':common')
+
+    // Spotify API (shade into jar) - temporarily disabled (JitPack issue)
+    // include(implementation("com.github.LabyStudio:java-spotify-api:${spotifyApiVersion}:all"))
+    include(implementation("com.google.code.gson:gson:2.11.0"))
+}
+
+loom {
+    accessWidenerPath = file("src/main/resources/redstarclient.accesswidener")
+
+    runs {
+        client {
+            client()
+            setConfigName("Fabric Client")
+            ideConfigGenerated(true)
+            runDir("run")
+        }
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from(project(':common').sourceSets.main.output)
+
+    manifest {
+        attributes([
+            "Implementation-Title"  : project.modName,
+            "Implementation-Version": project.version,
+        ])
+    }
+
+    archiveBaseName = "redstarclient"
+    archiveClassifier = "fabric"
+    
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

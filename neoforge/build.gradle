@@ -1,0 +1,55 @@
+// ☭ Red Star Client — NeoForge Module
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev' version "${neogradleVersion}"
+}
+
+neoForge {
+    version = project.neoforgeVersion
+
+    runs {
+        client {
+            client()
+        }
+    }
+
+    mods {
+        "${modId}" {
+            sourceSet sourceSets.main
+            sourceSet project(':common').sourceSets.main
+        }
+    }
+}
+
+dependencies {
+    // ImGuiMC (NeoForge version)
+    implementation "maven.modrinth:imguimc:${imguimcVersion}"
+
+    // Common module
+    implementation project(':common')
+
+    // Spotify API
+    jarJar(implementation("com.github.LabyStudio:java-spotify-api:${spotifyApiVersion}:all"))
+    jarJar(implementation("com.google.code.gson:gson:2.11.0"))
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("META-INF/neoforge.mods.toml") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from(project(':common').sourceSets.main.output)
+
+    manifest {
+        attributes([
+            "Implementation-Title"  : project.modName,
+            "Implementation-Version": project.version,
+        ])
+    }
+
+    archiveBaseName = "redstarclient"
+    archiveClassifier = "neoforge"
+}

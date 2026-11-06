@@ -1,0 +1,31 @@
+// ☭ Red Star Client — Common Module
+// Contains all shared logic: modules, GUI, theme, events, config, utils.
+// No loader dependency — pure Java library compiled against MC stubs.
+
+plugins {
+    id 'fabric-loom'
+}
+
+dependencies {
+    // Minecraft client for API access
+    minecraft "com.mojang:minecraft:${minecraftVersion}"
+    mappings loom.officialMojangMappings()
+    
+    // Fabric API for EnvType
+    modCompileOnly "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
+    
+    // ImGui Java bindings (will be included in final JAR)
+    implementation "io.github.spair:imgui-java-binding:${imguiJavaVersion}"
+    implementation "io.github.spair:imgui-java-lwjgl3:${imguiJavaVersion}"
+    implementation "io.github.spair:imgui-java-natives-windows:${imguiJavaVersion}"
+
+    // JSON config persistence
+    implementation "com.google.code.gson:gson:2.11.0"
+
+    // Spotify local API (shaded into final JAR) - temporarily disabled (JitPack issue)
+    // implementation "com.github.LabyStudio:java-spotify-api:${spotifyApiVersion}:all"
+}
+
+loom {
+    // Common module configuration
+}

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "redstarclient",
+  "version": "1.0.0",
+  "name": "☭ Red Star Client",
+  "description": "Communist-themed utility client mod for Minecraft 26.3",
+  "authors": ["Red Star Collective"],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "icon": "assets/redstarclient/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.redstarclient.fabric.RedStarClientFabric"
+    ]
+  },
+  "mixins": [
+    "redstarclient.mixins.json"
+  ],
+  "accessWidener": "redstarclient.accesswidener",
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": ">=1.21.4",
+    "java": ">=21"
+  },
+  "suggests": {
+    "fabric-api": "*"
+  }
+}

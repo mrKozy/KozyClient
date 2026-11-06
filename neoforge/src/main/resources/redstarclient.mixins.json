@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.redstarclient.neoforge.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "GameRendererMixin",
+    "ClientPlayerEntityMixin",
+    "ClientPlayNetworkHandlerMixin",
+    "MinecraftClientMixin",
+    "BlockRenderManagerMixin",
+    "LivingEntityMixin",
+    "ChatMixin",
+    "KeyboardMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
