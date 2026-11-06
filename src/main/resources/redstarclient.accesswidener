@@ -1,0 +1,19 @@
+accessWidener	v2	official
+
+# FastPlace — access Minecraft.rightClickDelay (private field)
+accessible	field	net/minecraft/client/Minecraft	rightClickDelay	I
+mutable	field	net/minecraft/client/Minecraft	rightClickDelay	I
+
+# Velocity / JumpReset — access LivingEntity.jumpFromGround()
+accessible	method	net/minecraft/world/entity/LivingEntity	jumpFromGround	()V
+
+# AntiCobweb — access Entity.stuckSpeedMultiplier
+accessible	field	net/minecraft/world/entity/Entity	stuckSpeedMultiplier	Lnet/minecraft/world/phys/Vec3;
+mutable	field	net/minecraft/world/entity/Entity	stuckSpeedMultiplier	Lnet/minecraft/world/phys/Vec3;
+
+# InventoryMove — access KeyMapping.key
+accessible	field	net/minecraft/client/KeyMapping	key	Lcom/mojang/blaze3d/platform/InputConstants$Key;
+
+
+
+

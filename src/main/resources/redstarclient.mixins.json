@@ -1,0 +1,38 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.redstarclient.fabric.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "GameRendererMixin",
+    "ClientPlayerEntityMixin",
+    "ClientPlayNetworkHandlerMixin",
+    "MinecraftClientMixin",
+    "BlockRenderManagerMixin",
+    "LivingEntityMixin",
+    "ChatMixin",
+    "KeyboardMixin",
+    "EntityGlowMixin",
+    "GuiMixin",
+    "CameraMixin",
+    "MouseMixin",
+    "MultiPlayerGameModeMixin",
+    "ScreenEffectRendererMixin",
+    "LevelRendererMixin",
+    "ClientBrandRetrieverMixin",
+    "ClientCommonPacketListenerImplMixin",
+    "KnownPacksManagerMixin",
+    "YggdrasilUserApiServiceMixin",
+    "KeybindContentsMixin",
+    "TitleScreenMixin",
+    "ConnectionMixin",
+    "FramerateLimitTrackerMixin",
+    "ItemInHandRendererMixin",
+    "LevelExtractorMixin",
+    "WebBlockMixin",
+    "PlayerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}
