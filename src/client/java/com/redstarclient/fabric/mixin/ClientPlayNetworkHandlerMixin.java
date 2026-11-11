@@ -57,6 +57,22 @@ public class ClientPlayNetworkHandlerMixin {
         }
     }
 
+    @Inject(method = "handleSoundEvent", at = @At("HEAD"))
+    private void redstar$onSound(net.minecraft.network.protocol.game.ClientboundSoundPacket packet, CallbackInfo ci) {
+        com.redstarclient.module.render.SoundESPModule soundESP = RedStarClient.MODULES.get(com.redstarclient.module.render.SoundESPModule.class);
+        if (soundESP != null && soundESP.isEnabled()) {
+            soundESP.onSoundPacket(packet);
+        }
+    }
+
+    @Inject(method = "handleSoundEntityEvent", at = @At("HEAD"))
+    private void redstar$onSoundEntity(net.minecraft.network.protocol.game.ClientboundSoundEntityPacket packet, CallbackInfo ci) {
+        com.redstarclient.module.render.SoundESPModule soundESP = RedStarClient.MODULES.get(com.redstarclient.module.render.SoundESPModule.class);
+        if (soundESP != null && soundESP.isEnabled()) {
+            soundESP.onSoundEntityPacket(packet);
+        }
+    }
+
     // TODO: MC 1.21.4 - onDisconnect method no longer exists, needs reimplementation
     /*
     @Inject(method = "onDisconnect", at = @At("HEAD"))

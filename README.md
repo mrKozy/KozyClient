@@ -25,8 +25,9 @@
 
 - **Dear ImGui Native HUD & GUI**: Smooth 60+ FPS overlay rendered natively via Dear ImGui LWJGL3 bindings with zero game thread stutter.
 - **Draggable HUD Layout Editor**: Customize and position on-screen HUD widgets including Coordinates/FPS, Armor HUD, CPS tracker, Ping indicator, and Spotify HUD.
-- **Custom Modules**: Extensible module system categorized into Combat, Movement, Render / Visuals, Player Automation, and Diagnostics.
-- **Embedded PvP Enhancements**: Integrated low-fire, clear visual assets, and customized particle styling.
+- **Base & Stash Hunter Tools**: SusChunk cluster analysis, sound ESP, and secret vault detectors.
+- **Admin & Anti-Staff Radar**: Real-time detection of vanished staff, spectators, and invisible players.
+- **Cosmetics & Aesthetics**: Dynamic tilting Asian Hat (China Hat), custom particle multipliers, and low-fire PvP packs.
 
 ---
 
@@ -66,6 +67,10 @@
 - **Step**: Elevated block step-up (up to 2.5 blocks) without manual jumping.
 
 ### Render & Visuals
+- **SoundESP**: Visualizes in-game sound packets (footsteps, hurt noises, explosions, chests opening, block breaks) as expanding 3D rings and distance billboard text through walls.
+- **StaffESP**: Detects vanished administrators (missing from tablist), spectators, invisible players, and staff prefix titles with on-screen warnings and distinct bounding boxes.
+- **SusChunkESP**: Advanced base & vault finder analyzing chunk tile-entity density (chests, hoppers, shulkers, spawners, beacons) to pinpoint underground bases.
+- **AsianHat**: Conical bamboo China hat hovering over player heads that dynamically tilts with head pitch and rotation.
 - **ESP**: 2D bounding boxes, 3D wireframe boxes, and highlighted silhouettes with customizable team coloring.
 - **Tracers**: Clean vector guidance lines drawn from crosshair toward entities in range.
 - **X-Ray**: Selective ore rendering for Ancient Debris, Diamonds, Gold, Iron, Emerald, and container blocks.
@@ -89,29 +94,6 @@
 - **Ping Tracker**: Live latency readout to the connected server.
 - **InventoryViewer**: Visual HUD displaying main inventory items without opening the screen.
 - **SpotifyHUD**: Desktop media integration displaying currently playing artist and song title.
-
----
-
-## Project Structure
-
-```
-KozyClient (branch: main)
-├── src/
-│   ├── client/java/com/redstarclient/
-│   │   ├── config/          # JSON configuration persistence & serialization
-│   │   ├── event/           # High-speed EventBus & game lifecycle events
-│   │   ├── fabric/          # Fabric ClientModInitializer & mixins
-│   │   ├── gui/             # Dear ImGui ClickGUI, HUD editor & widgets
-│   │   ├── module/          # Combat, Movement, Render, Player & Info modules
-│   │   ├── render/          # Matrix math, ESP renderer & render utils
-│   │   ├── theme/           # UI styling & color palettes
-│   │   └── util/            # Player, inventory, block & timer helpers
-│   └── main/resources/      # Mod metadata, mixins, icons & assets
-├── gradle/wrapper/          # Gradle wrapper binaries & configuration
-├── build.gradle             # Fabric Loom 1.17 build script
-├── settings.gradle          # Gradle project configuration
-└── gradle.properties        # Minecraft 26.2 & Fabric dependency versions
-```
 
 ---
 

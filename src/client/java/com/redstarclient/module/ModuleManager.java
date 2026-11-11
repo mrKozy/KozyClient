@@ -135,6 +135,10 @@ public class ModuleManager {
         register(new CameraClipModule());
         register(new TrueSightModule());
         register(new SkinDerpModule());
+        register(new SoundESPModule());
+        register(new StaffESPModule());
+        register(new SusChunkESPModule());
+        register(new AsianHatModule());
 
         // 🛠️ Player & World
         register(new FastPlaceModule());
