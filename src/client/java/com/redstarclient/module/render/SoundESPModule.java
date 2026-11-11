@@ -109,6 +109,9 @@ public class SoundESPModule extends Module {
     }
 
     private String simplifySoundName(String raw) {
+        if (raw.contains("minecart") || raw.contains("riding")) return "Minecart (Farm/Rail)";
+        if (raw.contains("piston")) return "Piston (Auto-Farm)";
+        if (raw.contains("dispenser") || raw.contains("dropper")) return "Dispenser / Dropper";
         if (raw.contains("step")) return "Footstep";
         if (raw.contains("hurt")) return "Damage / Hurt";
         if (raw.contains("attack")) return "Attack Swing";
@@ -124,6 +127,7 @@ public class SoundESPModule extends Module {
         if (raw.contains("place")) return "Block Place";
         if (raw.contains("portal")) return "Portal";
         if (raw.contains("wind_charge")) return "Wind Charge";
+        if (raw.contains("beacon")) return "Beacon Sound";
 
         // Fallback: extract last component
         int lastSlash = raw.lastIndexOf('/');
@@ -133,6 +137,9 @@ public class SoundESPModule extends Module {
     }
 
     private int getSoundColor(SoundSource src, String raw) {
+        if (raw.contains("minecart") || raw.contains("piston") || raw.contains("dispenser")) {
+            return RenderUtils.toARGB(0.2f, 1.0f, 0.4f, 1.0f); // Bright Lime for farm/minecart sounds
+        }
         if (raw.contains("totem") || raw.contains("creeper") || raw.contains("explode")) {
             return RenderUtils.toARGB(1.0f, 0.1f, 0.1f, 1.0f); // Bright red alert
         }

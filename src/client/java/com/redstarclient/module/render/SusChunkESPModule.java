@@ -12,15 +12,22 @@ import imgui.type.ImInt;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.entity.*;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * Sus Chunk ESP (Base & Vault Cluster Finder):
- * Scans loaded chunks for high concentrations of tile entities (chests, hoppers,
- * shulker boxes, spawners, beacons) indicating hidden player bases and secret vaults.
+ * Scans loaded chunks down to bedrock for high concentrations of tile entities (chests, hoppers,
+ * shulker boxes, spawners, beacons) indicating hidden underground player bases and secret vaults.
  */
 public class SusChunkESPModule extends Module {
 
@@ -29,9 +36,14 @@ public class SusChunkESPModule extends Module {
     private final ImBoolean tightBox       = new ImBoolean(true);
     private final ImBoolean drawTracers    = new ImBoolean(true);
     private final ImBoolean drawStats      = new ImBoolean(true);
+    private final ImBoolean notifyChat     = new ImBoolean(true);
+    private final ImBoolean notifySound    = new ImBoolean(true);
+
+    private final Set<Long> notifiedChunks = new HashSet<>();
+    private long lastClearTime = 0;
 
     public SusChunkESPModule() {
-        super("SusChunkESP", "Erkennt verdächtige Chunk-Cluster mit vielen Kisten, Hoppern & Spawnern (Basen-Finder).", ModuleCategory.RENDER, -1);
+        super("SusChunkESP", "Erkennt verdächtige Chunk-Cluster mit vielen Kisten, Hoppern & Spawnern bis zum Bedrock.", ModuleCategory.RENDER, -1);
     }
 
     private static class ChunkReport {
@@ -43,6 +55,7 @@ public class SusChunkESPModule extends Module {
         int spawners = 0;
         int beacons = 0;
         int dispensers = 0;
+        int deepslateCount = 0; // Containers below y=0 (near bedrock)
 
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
@@ -54,12 +67,17 @@ public class SusChunkESPModule extends Module {
             maxX = Math.max(maxX, p.getX());
             maxY = Math.max(maxY, p.getY());
             maxZ = Math.max(maxZ, p.getZ());
+
+            if (p.getY() <= 0) {
+                deepslateCount++;
+            }
         }
 
         int calculateScore() {
+            // Extra weight (+4) for hidden containers located deep underground below y=0 near bedrock!
             return (chests * 2) + (enderChests * 3) + (shulkers * 8) +
                    (furnaces * 2) + (hoppers * 3) + (spawners * 12) +
-                   (beacons * 15) + (dispensers * 1);
+                   (beacons * 15) + (dispensers * 1) + (deepslateCount * 4);
         }
 
         int totalContainers() {
@@ -72,11 +90,16 @@ public class SusChunkESPModule extends Module {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
 
+        long now = System.currentTimeMillis();
+        if (now - lastClearTime > 60000) {
+            notifiedChunks.clear();
+            lastClearTime = now;
+        }
+
         int pcx = mc.player.getBlockX() >> 4;
         int pcz = mc.player.getBlockZ() >> 4;
         int rad = Math.min(scanRadius.get(), 10);
 
-        ChunkReport bestReport = null;
         Vec3 bestCenter = null;
         int highestScore = 0;
 
@@ -122,18 +145,15 @@ public class SusChunkESPModule extends Module {
                 if (score >= thresholdScore.get() && rep.totalContainers() > 0) {
                     AABB box;
                     if (tightBox.get() && rep.minX <= rep.maxX) {
-                        // Tight box around the clustered storage room
                         box = new AABB(rep.minX - 0.2, rep.minY - 0.2, rep.minZ - 0.2,
                                        rep.maxX + 1.2, rep.maxY + 1.2, rep.maxZ + 1.2);
                     } else {
-                        // Whole chunk column
                         int y0 = Math.max(-64, chunk.getMinY());
                         int y1 = Math.min(320, chunk.getMaxY());
                         box = new AABB(cx * 16.0, y0, cz * 16.0,
                                        cx * 16.0 + 16.0, y1, cz * 16.0 + 16.0);
                     }
 
-                    // Color gradient based on score
                     int color;
                     if (score < 25) {
                         color = RenderUtils.toARGB(1.0f, 0.85f, 0.1f, 1.0f); // Gold
@@ -148,18 +168,23 @@ public class SusChunkESPModule extends Module {
                     Vec3 center = box.getCenter();
                     if (score > highestScore) {
                         highestScore = score;
-                        bestReport = rep;
                         bestCenter = center;
                     }
 
                     if (drawStats.get()) {
-                        String stats = String.format("SUS BASE [Score: %d] (%d Kisten, %d Hopper, %d Spawner)",
-                                score, rep.chests + rep.shulkers, rep.hoppers, rep.spawners);
+                        String stats = String.format("SUS BASE [Score: %d] (%d Kisten, %d Hopper, %d Bedrock-Stash)",
+                                score, rep.chests + rep.shulkers, rep.hoppers, rep.deepslateCount);
                         try {
                             BlockPos bpos = BlockPos.containing(center.x, box.maxY + 0.5, center.z);
                             net.minecraft.gizmos.Gizmos.billboardTextOverBlock(stats, bpos, color, RenderUtils.toARGB(0.0f, 0.0f, 0.0f, 0.75f), 1.0f)
                                     .setAlwaysOnTop();
                         } catch (Throwable ignored) {}
+                    }
+
+                    // Notification trigger with chunk pos key
+                    long chunkKey = (((long) cx) << 32) | (cz & 0xFFFFFFFFL);
+                    if (notifiedChunks.add(chunkKey)) {
+                        triggerSusNotification(cx, cz, score, rep.totalContainers(), rep.deepslateCount);
                     }
                 }
             }
@@ -173,6 +198,25 @@ public class SusChunkESPModule extends Module {
         }
     }
 
+    private void triggerSusNotification(int cx, int cz, int score, int containerCount, int deepslateCount) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return;
+
+        if (notifySound.get() && mc.level != null) {
+            mc.level.playLocalSound(mc.player.getX(), mc.player.getY(), mc.player.getZ(),
+                    SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, 1.0f, 1.4f, false);
+        }
+
+        if (notifyChat.get()) {
+            int blockX = (cx << 4) + 8;
+            int blockZ = (cz << 4) + 8;
+            String msg = "§6§l[SUS CHUNK GEFUNDEN] §eBasis bei X: " + blockX + ", Z: " + blockZ +
+                    " §7(Score: §f" + score + "§7, §c" + containerCount + " Container§7" +
+                    (deepslateCount > 0 ? ", §d" + deepslateCount + " bei Bedrock§7" : "") + ")!";
+            mc.player.sendSystemMessage(Component.literal(msg));
+        }
+    }
+
     @Override
     public void renderImGuiConfig() {
         ImGui.sliderInt("Such-Radius (Chunks)##sus", scanRadius.getData(), 2, 12);
@@ -180,8 +224,11 @@ public class SusChunkESPModule extends Module {
         ImGui.checkbox("Exakte Raum-Box (Tight Box)##sus", tightBox);
         ImGui.checkbox("Tracer-Linie zur größten Basis##sus", drawTracers);
         ImGui.checkbox("Cluster-Statistik als 3D-Text##sus", drawStats);
+        ImGui.separator();
+        ImGui.checkbox("Chat-Benachrichtigung bei Fund##sus", notifyChat);
+        ImGui.checkbox("Sound-Effekt bei Fund##sus", notifySound);
         ImGui.spacing();
-        ImGui.textDisabled("Bewertet Shulker (8), Spawner (12), Beacons (15), Hopper (3) und Kisten (2).");
+        ImGui.textDisabled("Scannt bis Y=-64 (Bedrock). Container unter Y=0 erhalten Extra-Score.");
     }
 
     @Override
@@ -192,6 +239,8 @@ public class SusChunkESPModule extends Module {
         cfg.putSetting("tightBox", tightBox.get());
         cfg.putSetting("drawTracers", drawTracers.get());
         cfg.putSetting("drawStats", drawStats.get());
+        cfg.putSetting("notifyChat", notifyChat.get());
+        cfg.putSetting("notifySound", notifySound.get());
         return cfg;
     }
 
@@ -203,5 +252,7 @@ public class SusChunkESPModule extends Module {
         tightBox.set(cfg.getSetting("tightBox", tightBox.get()));
         drawTracers.set(cfg.getSetting("drawTracers", drawTracers.get()));
         drawStats.set(cfg.getSetting("drawStats", drawStats.get()));
+        notifyChat.set(cfg.getSetting("notifyChat", notifyChat.get()));
+        notifySound.set(cfg.getSetting("notifySound", notifySound.get()));
     }
 }

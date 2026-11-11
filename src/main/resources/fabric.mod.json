@@ -1,12 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "redstarclient",
-  "version": "1.0.0",
-  "name": "☭ Red Star Client",
-  "description": "Communist-themed utility client mod for Minecraft 26.2",
-  "authors": ["Red Star Collective"],
-  "contact": {},
-  "license": "All-Rights-Reserved",
+  "version": "3.0.0",
+  "name": "KozyClient",
+  "description": "High-performance utility client mod for Minecraft 26.2 made by mr.Kozy",
+  "authors": ["mrKozy"],
+  "contact": {
+    "homepage": "https://github.com/mrKozy/KozyClient",
+    "sources": "https://github.com/mrKozy/KozyClient"
+  },
+  "license": "MIT",
   "icon": "assets/redstarclient/icon.png",
   "environment": "client",
   "entrypoints": {

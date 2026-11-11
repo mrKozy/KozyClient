@@ -1,4 +1,4 @@
-// Red Star Client — AsianHatModule
+// Red Star Client — AsianHatModule (Player Head Cosmetics ESP)
 package com.redstarclient.module.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -16,14 +16,15 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Asian Hat ESP (China Hat):
- * Renders a conical bamboo / coolie hat hovering above the player's head,
- * dynamically tilting with the player's head pitch and rotation.
+ * Head Cosmetics ESP (Asian Hat, Angel Halo, Devil Horns, Bunny Ears, Witch Hat):
+ * Renders custom 3D cosmetic headwear hovering above player heads, dynamically
+ * tilting with head pitch, yaw and player movement.
  */
 public class AsianHatModule extends Module {
 
     private final ImBoolean onSelf         = new ImBoolean(true);
     private final ImBoolean onOthers       = new ImBoolean(true);
+    private final ImInt     cosmeticStyle  = new ImInt(0); // 0 = Asian Hat, 1 = Angel Halo, 2 = Devil Horns, 3 = Bunny Ears, 4 = Witch Hat
     private final ImInt     segments       = new ImInt(18);
     private final ImInt     colorMode      = new ImInt(0); // 0 = Soviet Red/Gold, 1 = Chroma Rainbow, 2 = Custom RGB
     private final ImBoolean drawMiddleRing = new ImBoolean(true);
@@ -31,7 +32,7 @@ public class AsianHatModule extends Module {
     private final float[] customColor = new float[]{1.0f, 0.2f, 0.2f, 1.0f};
 
     public AsianHatModule() {
-        super("AsianHat", "Rendert einen asiatischen Reishut (China Hat) über dem Spielerkopf (neigt sich mit dem Kopf).", ModuleCategory.RENDER, -1);
+        super("AsianHat", "Rendert 3D-Kopf-Kosmetika (China Hat, Heiligenschein, Hörner, Hasenohren) über Spielerköpfen.", ModuleCategory.RENDER, -1);
     }
 
     @Override
@@ -40,20 +41,19 @@ public class AsianHatModule extends Module {
         if (mc.player == null || mc.level == null) return;
 
         if (onSelf.get()) {
-            renderHatFor(mc.player, tickDelta);
+            renderCosmetics(mc.player, tickDelta);
         }
 
         if (onOthers.get()) {
             for (Player p : mc.level.players()) {
                 if (p != mc.player && p.isAlive()) {
-                    renderHatFor(p, tickDelta);
+                    renderCosmetics(p, tickDelta);
                 }
             }
         }
     }
 
-    private void renderHatFor(Player p, float tickDelta) {
-        // Interpolated player head position
+    private void renderCosmetics(Player p, float tickDelta) {
         double px = Mth.lerp(tickDelta, p.xOld, p.getX());
         double py = Mth.lerp(tickDelta, p.yOld, p.getY()) + p.getEyeHeight() + 0.10;
         double pz = Mth.lerp(tickDelta, p.zOld, p.getZ());
@@ -64,81 +64,126 @@ public class AsianHatModule extends Module {
         float pitchRad = (float) Math.toRadians(pitch);
         float yawRad = (float) Math.toRadians(yaw);
 
-        // Calculate head orientation vectors
-        // Forward: direction player is looking
+        // Direction vectors
         double fx = -Math.sin(yawRad) * Math.cos(pitchRad);
         double fy = -Math.sin(pitchRad);
         double fz = Math.cos(yawRad) * Math.cos(pitchRad);
         Vec3 forward = new Vec3(fx, fy, fz).normalize();
-
-        // Right vector: perpendicular to forward on horizontal plane
         Vec3 right = new Vec3(Math.cos(yawRad), 0, Math.sin(yawRad)).normalize();
-
-        // Up vector: perpendicular to forward and right (tilted normal)
         Vec3 up = right.cross(forward).normalize();
+        Vec3 vAxis = up.cross(right).normalize();
 
+        Vec3 headCenter = new Vec3(px, py, pz);
+        int ribColor = getRibColor();
+        int ringColor = getRingColor();
+
+        int style = cosmeticStyle.get();
+        try {
+            switch (style) {
+                case 0 -> renderAsianHat(headCenter, right, vAxis, up, ribColor, ringColor);
+                case 1 -> renderAngelHalo(headCenter, right, vAxis, up, ringColor);
+                case 2 -> renderDevilHorns(headCenter, right, forward, up, ribColor);
+                case 3 -> renderBunnyEars(headCenter, right, up, ribColor, ringColor);
+                case 4 -> renderWitchHat(headCenter, right, vAxis, up, ribColor, ringColor);
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private void renderAsianHat(Vec3 baseCenter, Vec3 right, Vec3 vAxis, Vec3 up, int ribColor, int ringColor) {
         double hatRadius = 0.65;
         double hatHeight = 0.32;
-
-        Vec3 baseCenter = new Vec3(px, py, pz);
         Vec3 apex = baseCenter.add(up.scale(hatHeight));
 
         int segs = Math.max(8, Math.min(32, segments.get()));
         Vec3[] basePoints = new Vec3[segs];
         Vec3[] midPoints = new Vec3[segs];
 
-        // Generate circular points tilted with head normal
-        Vec3 vAxis = up.cross(right).normalize(); // in-plane orthogonal vector
-
         for (int i = 0; i < segs; i++) {
             double angle = (2.0 * Math.PI * i) / segs;
-            double cos = Math.cos(angle);
-            double sin = Math.sin(angle);
-
-            Vec3 offset = right.scale(cos * hatRadius).add(vAxis.scale(sin * hatRadius));
+            Vec3 offset = right.scale(Math.cos(angle) * hatRadius).add(vAxis.scale(Math.sin(angle) * hatRadius));
             basePoints[i] = baseCenter.add(offset);
             midPoints[i] = apex.add(basePoints[i]).scale(0.5);
         }
 
-        // Determine line colors
-        int ribColor = getRibColor();
-        int ringColor = getRingColor();
-
-        try {
-            // 1. Draw ribs connecting apex to base perimeter
-            for (int i = 0; i < segs; i++) {
-                net.minecraft.gizmos.Gizmos.line(apex, basePoints[i], ribColor, 1.8f).setAlwaysOnTop();
-            }
-
-            // 2. Draw base perimeter ring
-            for (int i = 0; i < segs; i++) {
-                Vec3 p1 = basePoints[i];
-                Vec3 p2 = basePoints[(i + 1) % segs];
-                net.minecraft.gizmos.Gizmos.line(p1, p2, ringColor, 2.2f).setAlwaysOnTop();
-            }
-
-            // 3. Draw middle woven concentric ring
+        for (int i = 0; i < segs; i++) {
+            net.minecraft.gizmos.Gizmos.line(apex, basePoints[i], ribColor, 1.8f).setAlwaysOnTop();
+            net.minecraft.gizmos.Gizmos.line(basePoints[i], basePoints[(i + 1) % segs], ringColor, 2.2f).setAlwaysOnTop();
             if (drawMiddleRing.get()) {
-                for (int i = 0; i < segs; i++) {
-                    Vec3 m1 = midPoints[i];
-                    Vec3 m2 = midPoints[(i + 1) % segs];
-                    net.minecraft.gizmos.Gizmos.line(m1, m2, ringColor, 1.4f).setAlwaysOnTop();
-                }
+                net.minecraft.gizmos.Gizmos.line(midPoints[i], midPoints[(i + 1) % segs], ringColor, 1.4f).setAlwaysOnTop();
             }
-        } catch (Throwable ignored) {}
+        }
+    }
+
+    private void renderAngelHalo(Vec3 headCenter, Vec3 right, Vec3 vAxis, Vec3 up, int ringColor) {
+        Vec3 haloCenter = headCenter.add(up.scale(0.35));
+        double haloRadius = 0.45;
+        int segs = 20;
+        Vec3[] ringPoints = new Vec3[segs];
+
+        for (int i = 0; i < segs; i++) {
+            double angle = (2.0 * Math.PI * i) / segs;
+            Vec3 offset = right.scale(Math.cos(angle) * haloRadius).add(vAxis.scale(Math.sin(angle) * haloRadius));
+            ringPoints[i] = haloCenter.add(offset);
+        }
+
+        for (int i = 0; i < segs; i++) {
+            net.minecraft.gizmos.Gizmos.line(ringPoints[i], ringPoints[(i + 1) % segs], ringColor, 3.0f).setAlwaysOnTop();
+        }
+    }
+
+    private void renderDevilHorns(Vec3 headCenter, Vec3 right, Vec3 forward, Vec3 up, int color) {
+        // Left Horn
+        Vec3 leftBase = headCenter.add(right.scale(-0.25)).add(forward.scale(0.1));
+        Vec3 leftTip = leftBase.add(up.scale(0.35)).add(right.scale(-0.20)).add(forward.scale(0.12));
+        net.minecraft.gizmos.Gizmos.line(leftBase, leftTip, color, 3.2f).setAlwaysOnTop();
+
+        // Right Horn
+        Vec3 rightBase = headCenter.add(right.scale(0.25)).add(forward.scale(0.1));
+        Vec3 rightTip = rightBase.add(up.scale(0.35)).add(right.scale(0.20)).add(forward.scale(0.12));
+        net.minecraft.gizmos.Gizmos.line(rightBase, rightTip, color, 3.2f).setAlwaysOnTop();
+    }
+
+    private void renderBunnyEars(Vec3 headCenter, Vec3 right, Vec3 up, int earColor, int innerColor) {
+        // Left Ear
+        Vec3 lBase = headCenter.add(right.scale(-0.20));
+        Vec3 lTip = lBase.add(up.scale(0.60)).add(right.scale(-0.08));
+        net.minecraft.gizmos.Gizmos.line(lBase, lTip, earColor, 3.5f).setAlwaysOnTop();
+        net.minecraft.gizmos.Gizmos.line(lBase.add(up.scale(0.05)), lTip.add(up.scale(-0.05)), innerColor, 1.8f).setAlwaysOnTop();
+
+        // Right Ear
+        Vec3 rBase = headCenter.add(right.scale(0.20));
+        Vec3 rTip = rBase.add(up.scale(0.60)).add(right.scale(0.08));
+        net.minecraft.gizmos.Gizmos.line(rBase, rTip, earColor, 3.5f).setAlwaysOnTop();
+        net.minecraft.gizmos.Gizmos.line(rBase.add(up.scale(0.05)), rTip.add(up.scale(-0.05)), innerColor, 1.8f).setAlwaysOnTop();
+    }
+
+    private void renderWitchHat(Vec3 baseCenter, Vec3 right, Vec3 vAxis, Vec3 up, int ribColor, int ringColor) {
+        double brimRadius = 0.75;
+        double tipHeight = 0.65;
+        Vec3 apex = baseCenter.add(up.scale(tipHeight)).add(right.scale(-0.15)); // stylish curved tip
+
+        int segs = 16;
+        Vec3[] brimPoints = new Vec3[segs];
+        for (int i = 0; i < segs; i++) {
+            double angle = (2.0 * Math.PI * i) / segs;
+            Vec3 offset = right.scale(Math.cos(angle) * brimRadius).add(vAxis.scale(Math.sin(angle) * brimRadius));
+            brimPoints[i] = baseCenter.add(offset);
+        }
+
+        for (int i = 0; i < segs; i++) {
+            net.minecraft.gizmos.Gizmos.line(apex, brimPoints[i], ribColor, 2.0f).setAlwaysOnTop();
+            net.minecraft.gizmos.Gizmos.line(brimPoints[i], brimPoints[(i + 1) % segs], ringColor, 2.5f).setAlwaysOnTop();
+        }
     }
 
     private int getRibColor() {
         if (colorMode.get() == 1) {
-            // Chroma Rainbow
             float hue = (System.currentTimeMillis() % 4000L) / 4000.0f;
             int rgb = java.awt.Color.HSBtoRGB(hue, 0.85f, 1.0f);
             return (0xFF << 24) | (rgb & 0x00FFFFFF);
         } else if (colorMode.get() == 2) {
-            // Custom RGB
             return RenderUtils.toARGB(customColor[0], customColor[1], customColor[2], customColor[3]);
         }
-        // Soviet Red
         return RenderUtils.SOVIET_RED;
     }
 
@@ -150,26 +195,31 @@ public class AsianHatModule extends Module {
         } else if (colorMode.get() == 2) {
             return RenderUtils.toARGB(customColor[0], customColor[1], customColor[2], customColor[3]);
         }
-        // Worker Gold
         return RenderUtils.SOVIET_GOLD;
     }
 
     @Override
     public void renderImGuiConfig() {
+        String[] styles = new String[]{"Asian Hat (China Hat)", "Angel Halo (Heiligenschein)", "Devil Horns (Hörner)", "Bunny Ears (Hasenohren)", "Witch Hat (Hexenhut)"};
+        ImGui.combo("Kosmetik-Stil##ashat", cosmeticStyle, styles);
+        ImGui.separator();
+
         ImGui.checkbox("Auf eigenem Spieler (Self) anzeigen##ashat", onSelf);
         ImGui.checkbox("Auf anderen Spielern anzeigen##ashat", onOthers);
-        ImGui.checkbox("Mittleren Reif (Geflecht-Ring) zeichnen##ashat", drawMiddleRing);
-        ImGui.sliderInt("Rippen-Detail (Segmente)##ashat", segments.getData(), 8, 32);
+        if (cosmeticStyle.get() == 0) {
+            ImGui.checkbox("Mittleren Reif (Geflecht-Ring) zeichnen##ashat", drawMiddleRing);
+            ImGui.sliderInt("Rippen-Detail (Segmente)##ashat", segments.getData(), 8, 32);
+        }
         ImGui.separator();
 
         String[] modes = new String[]{"Soviet Rot/Gold", "Chroma Rainbow", "Eigenes RGB"};
-        if (ImGui.combo("Farb-Modus##ashat", colorMode, modes)) {}
+        ImGui.combo("Farb-Modus##ashat", colorMode, modes);
 
         if (colorMode.get() == 2) {
-            ImGui.colorEdit4("Hut-Farbe##ashat", customColor);
+            ImGui.colorEdit4("Farbe##ashat", customColor);
         }
         ImGui.spacing();
-        ImGui.textDisabled("Klassischer kegelförmiger China-Hat ESP mit dynamischer Kopfneigung.");
+        ImGui.textDisabled("3D-Kopf-Kosmetika mit flüssiger Neigung bei Kopfbewegungen.");
     }
 
     @Override
@@ -177,6 +227,7 @@ public class AsianHatModule extends Module {
         ModuleConfig cfg = super.toConfig();
         cfg.putSetting("onSelf", onSelf.get());
         cfg.putSetting("onOthers", onOthers.get());
+        cfg.putSetting("cosmeticStyle", cosmeticStyle.get());
         cfg.putSetting("segments", segments.get());
         cfg.putSetting("colorMode", colorMode.get());
         cfg.putSetting("drawMiddleRing", drawMiddleRing.get());
@@ -192,6 +243,7 @@ public class AsianHatModule extends Module {
         super.fromConfig(cfg);
         onSelf.set(cfg.getSetting("onSelf", onSelf.get()));
         onOthers.set(cfg.getSetting("onOthers", onOthers.get()));
+        cosmeticStyle.set(cfg.getSetting("cosmeticStyle", cosmeticStyle.get()));
         segments.set(cfg.getSetting("segments", segments.get()));
         colorMode.set(cfg.getSetting("colorMode", colorMode.get()));
         drawMiddleRing.set(cfg.getSetting("drawMiddleRing", drawMiddleRing.get()));
