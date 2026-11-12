@@ -45,7 +45,7 @@ public class WatermarkWidget {
 
             ImGui.alignTextToFramePadding();
             ImGui.textColored(CommunistTheme.SOVIET_GOLD[0], CommunistTheme.SOVIET_GOLD[1], CommunistTheme.SOVIET_GOLD[2], 1.0f,
-                    "RED STAR");
+                    "KOZY CLIENT");
 
             ImGui.sameLine();
             ImGui.textDisabled("|");

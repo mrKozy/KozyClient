@@ -7,7 +7,7 @@ import com.redstarclient.gui.Icons;
 public enum ModuleCategory {
     COMBAT   ("Combat / Sword", Icons.SWORDS),
     CRYSTAL  ("Crystal PvP",    Icons.BOLT),
-    MACE     ("Mace PvP",       Icons.HAMMER),
+    MACE     ("Mace PvP",       Icons.BOLT),
     CART     ("Cart & Spear",   Icons.COMPASS),
     POT_UHC  ("Pot & UHC",      Icons.SHIELD),
     MOVEMENT ("Movement",       Icons.RUNNING),

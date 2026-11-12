@@ -104,7 +104,7 @@ public class MainMenuWindow {
             }
             ImGui.alignTextToFramePadding();
             ImGui.textColored(CommunistTheme.SOVIET_GOLD[0], CommunistTheme.SOVIET_GOLD[1], CommunistTheme.SOVIET_GOLD[2], 1.0f,
-                    "RED STAR");
+                    "KozyClient");
             ImGui.sameLine();
             ImGui.textDisabled("v" + RedStarClient.VERSION);
 
@@ -348,25 +348,30 @@ public class MainMenuWindow {
 
         boolean enabled = m.isEnabled();
 
-        // Enabled: Solid Red. Disabled: Dark Charcoal/Slate Gray.
+        // Pulsing breathing animation for active modules
+        long time = System.currentTimeMillis();
+        float pulse = (float) (0.86 + 0.14 * Math.sin(time / 180.0));
+
+        // Enabled: Pulsing Crimson. Disabled: Dark Charcoal/Slate Gray.
         if (enabled) {
-            ImGui.pushStyleColor(imgui.flag.ImGuiCol.Button,        0.78f, 0.10f, 0.14f, 0.95f);
-            ImGui.pushStyleColor(imgui.flag.ImGuiCol.ButtonHovered, 0.92f, 0.14f, 0.20f, 1.00f);
+            ImGui.pushStyleColor(imgui.flag.ImGuiCol.Button,        0.78f * pulse, 0.10f, 0.14f, 0.95f);
+            ImGui.pushStyleColor(imgui.flag.ImGuiCol.ButtonHovered, 0.94f, 0.15f, 0.22f, 1.00f);
             ImGui.pushStyleColor(imgui.flag.ImGuiCol.ButtonActive,  0.65f, 0.08f, 0.12f, 1.00f);
             ImGui.pushStyleColor(imgui.flag.ImGuiCol.Text,          1.00f, 1.00f, 1.00f, 1.00f);
         } else {
             ImGui.pushStyleColor(imgui.flag.ImGuiCol.Button,        0.13f, 0.13f, 0.17f, 0.85f);
-            ImGui.pushStyleColor(imgui.flag.ImGuiCol.ButtonHovered, 0.28f, 0.08f, 0.11f, 0.90f);
+            ImGui.pushStyleColor(imgui.flag.ImGuiCol.ButtonHovered, 0.28f, 0.10f, 0.14f, 0.92f);
             ImGui.pushStyleColor(imgui.flag.ImGuiCol.ButtonActive,  0.45f, 0.08f, 0.11f, 1.00f);
             ImGui.pushStyleColor(imgui.flag.ImGuiCol.Text,          0.80f, 0.80f, 0.85f, 0.90f);
         }
 
-        // Module Label with keybind badge if bound
+        // Module Label with animated indicator dot and keybind badge if bound
         String keyBadge = (m.getKeybind() > 0) ? " [" + KeyUtils.getKeyName(m.getKeybind()) + "]" : "";
-        String label = " " + m.getName() + keyBadge;
+        String dot = enabled ? "● " : "  ";
+        String label = " " + dot + m.getName() + keyBadge;
 
         // Render Button (compact height)
-        ImGui.button(label, btnWidth, 19.5f);
+        ImGui.button(label, btnWidth, 20.0f);
 
         // Click detection
         if (ImGui.isItemClicked(0)) {
@@ -617,7 +622,7 @@ public class MainMenuWindow {
             ImGui.separator();
             ImGui.spacing();
             ImGui.textColored(CommunistTheme.SOVIET_GOLD[0], CommunistTheme.SOVIET_GOLD[1], CommunistTheme.SOVIET_GOLD[2], 0.8f,
-                    Icons.STAR + " ☭ Red Star Client 26.2 — Proletarier aller Laender, vereinigt euch!");
+                    Icons.STAR + " KozyClient v3.0 by mr.Kozy");
         }
         ImGui.end();
 

@@ -1,4 +1,4 @@
-// Red Star Client — TunnelESPModule
+// KozyClient — TunnelESPModule
 package com.redstarclient.module.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -13,25 +13,31 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Tunnel ESP:
- * Scans underground layers down to bedrock to detect player-mined tunnels (1x2 strip mines,
- * branch highways, portal tunnels, base passages) and highlights them through walls.
+ * Scans underground layers around the player and down to bedrock to detect player-mined
+ * tunnels (1x2 strip mines, 2x2 highways, branch mines, rail tunnels) and renders
+ * bright glowing cyan wireframes through walls.
  */
 public class TunnelESPModule extends Module {
 
-    private final ImInt     radius       = new ImInt(32);
-    private final ImInt     minY         = new ImInt(-58);
-    private final ImInt     maxY         = new ImInt(30);
-    private final ImBoolean drawTracers  = new ImBoolean(false);
+    private final ImInt     scanRadius   = new ImInt(24);
+    private final ImInt     minY         = new ImInt(-60);
+    private final ImInt     maxY         = new ImInt(40);
+    private final ImBoolean drawTracers  = new ImBoolean(true);
+    private final ImBoolean connectPath  = new ImBoolean(true);
 
     private final List<AABB> tunnelBoxes = new ArrayList<>();
+    private final List<Vec3> tunnelPoints = new ArrayList<>();
     private long lastScanTime = 0;
 
     public TunnelESPModule() {
@@ -42,57 +48,124 @@ public class TunnelESPModule extends Module {
     public void onRenderWorld3D(PoseStack poseStack, Camera camera, float tickDelta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
+        if (StreamProofModule.shouldHideVisuals()) return;
 
         long now = System.currentTimeMillis();
-        if (now - lastScanTime > 1500) {
+        if (now - lastScanTime > 1200) {
             scanTunnels(mc.level, mc.player.blockPosition());
             lastScanTime = now;
         }
 
-        int color = RenderUtils.toARGB(0.1f, 0.9f, 1.0f, 0.85f); // Bright cyan
+        int cyanBox   = RenderUtils.toARGB(0.0f, 0.95f, 1.0f, 0.90f);
+        int cyanFill  = RenderUtils.toARGB(0.0f, 0.80f, 1.0f, 0.12f);
+        int lineColor = RenderUtils.toARGB(0.2f, 1.0f, 0.85f, 1.0f);
+
+        // Render each tunnel bounding box through walls
+        net.minecraft.gizmos.GizmoStyle style = net.minecraft.gizmos.GizmoStyle.strokeAndFill(cyanBox, 1.8f, cyanFill);
         for (AABB box : tunnelBoxes) {
-            RenderUtils.drawBox3D(poseStack, camera, box, color, 1.5f, 0.08f);
+            try {
+                net.minecraft.gizmos.Gizmos.cuboid(box, style).setAlwaysOnTop();
+            } catch (Throwable ignored) {}
         }
 
-        if (drawTracers.get() && !tunnelBoxes.isEmpty()) {
-            AABB nearest = tunnelBoxes.get(0);
-            net.minecraft.gizmos.Gizmos.line(mc.player.getEyePosition(tickDelta), nearest.getCenter(), color, 1.5f)
-                    .setAlwaysOnTop();
+        // Draw connected path between consecutive tunnel points
+        if (connectPath.get() && tunnelPoints.size() > 1) {
+            for (int i = 0; i < tunnelPoints.size() - 1; i++) {
+                Vec3 p1 = tunnelPoints.get(i);
+                Vec3 p2 = tunnelPoints.get(i + 1);
+                if (p1.distanceToSqr(p2) < 25.0) { // within 5 blocks
+                    try {
+                        net.minecraft.gizmos.Gizmos.line(p1, p2, lineColor, 2.0f).setAlwaysOnTop();
+                    } catch (Throwable ignored) {}
+                }
+            }
         }
+
+        // Draw tracer line from player eye to nearest tunnel
+        if (drawTracers.get() && !tunnelPoints.isEmpty()) {
+            Vec3 eye = mc.player.getEyePosition(tickDelta);
+            Vec3 nearest = tunnelPoints.get(0);
+            double minDist = eye.distanceToSqr(nearest);
+            for (Vec3 pt : tunnelPoints) {
+                double d = eye.distanceToSqr(pt);
+                if (d < minDist) {
+                    minDist = d;
+                    nearest = pt;
+                }
+            }
+            try {
+                net.minecraft.gizmos.Gizmos.line(eye, nearest, cyanBox, 2.0f).setAlwaysOnTop();
+            } catch (Throwable ignored) {}
+        }
+    }
+
+    private boolean isPassable(BlockState s) {
+        if (s.isAir()) return true;
+        Block b = s.getBlock();
+        return b == Blocks.TORCH || b == Blocks.WALL_TORCH ||
+               b == Blocks.SOUL_TORCH || b == Blocks.SOUL_WALL_TORCH ||
+               b == Blocks.REDSTONE_TORCH || b == Blocks.REDSTONE_WALL_TORCH ||
+               b == Blocks.RAIL || b == Blocks.POWERED_RAIL || b == Blocks.DETECTOR_RAIL || b == Blocks.ACTIVATOR_RAIL ||
+               b == Blocks.REDSTONE_WIRE || b == Blocks.LADDER || b == Blocks.LEVER ||
+               b == Blocks.TRIPWIRE || b == Blocks.LANTERN || b == Blocks.SOUL_LANTERN;
+    }
+
+    private boolean isSolid(BlockState s) {
+        return !s.isAir() && s.blocksMotion();
     }
 
     private void scanTunnels(Level level, BlockPos playerPos) {
         tunnelBoxes.clear();
-        int r = Math.min(48, radius.get());
-        int y0 = Math.max(-64, minY.get());
-        int y1 = Math.min(60, maxY.get());
+        tunnelPoints.clear();
+
+        int r = Math.min(32, Math.max(12, scanRadius.get()));
+        int py = playerPos.getY();
+        int yBottom = Math.max(-64, Math.min(minY.get(), py - 18));
+        int yTop = Math.min(64, Math.max(maxY.get(), py + 10));
 
         int px = playerPos.getX();
         int pz = playerPos.getZ();
 
-        // Sample underground blocks in 2-block vertical steps
-        for (int x = px - r; x <= px + r; x += 3) {
-            for (int z = pz - r; z <= pz + r; z += 3) {
-                for (int y = y0; y <= y1; y += 2) {
+        for (int x = px - r; x <= px + r; x++) {
+            for (int z = pz - r; z <= pz + r; z++) {
+                // Quick horizontal distance check
+                int dx = x - px;
+                int dz = z - pz;
+                if ((dx * dx + dz * dz) > (r * r)) continue;
+
+                for (int y = yBottom; y <= yTop; y++) {
                     BlockPos p = new BlockPos(x, y, z);
                     BlockState s0 = level.getBlockState(p);
 
-                    // Check for 1x2 vertical air cavity
-                    if (s0.isAir()) {
+                    // Check for 1x2 tunnel cavity
+                    if (isPassable(s0)) {
                         BlockState s1 = level.getBlockState(p.above());
-                        if (s1.isAir()) {
-                            // Check solid floor
+                        if (isPassable(s1)) {
+                            // Must have solid floor and solid ceiling
                             BlockState floor = level.getBlockState(p.below());
-                            if (floor.isSolid()) {
-                                // Check if walls are enclosed (typical player tunnel)
-                                boolean northSouthWall = level.getBlockState(p.north()).isSolid() && level.getBlockState(p.south()).isSolid();
-                                boolean eastWestWall = level.getBlockState(p.east()).isSolid() && level.getBlockState(p.west()).isSolid();
+                            BlockState roof  = level.getBlockState(p.above(2));
 
-                                if (northSouthWall || eastWestWall) {
-                                    AABB box = new AABB(p.getX(), p.getY(), p.getZ(),
-                                                        p.getX() + 1.0, p.getY() + 2.0, p.getZ() + 1.0);
+                            if (isSolid(floor) && isSolid(roof)) {
+                                // Check if walls enclose the passage
+                                boolean northSolid = isSolid(level.getBlockState(p.north()));
+                                boolean southSolid = isSolid(level.getBlockState(p.south()));
+                                boolean eastSolid  = isSolid(level.getBlockState(p.east()));
+                                boolean westSolid  = isSolid(level.getBlockState(p.west()));
+
+                                boolean isTunnel = (northSolid && southSolid) || (eastSolid && westSolid);
+                                // Also allow corners / turns in tunnels
+                                if (!isTunnel && (northSolid || southSolid) && (eastSolid || westSolid)) {
+                                    isTunnel = true;
+                                }
+
+                                if (isTunnel) {
+                                    AABB box = new AABB(p.getX() + 0.05, p.getY() + 0.05, p.getZ() + 0.05,
+                                                        p.getX() + 0.95, p.getY() + 1.95, p.getZ() + 0.95);
                                     tunnelBoxes.add(box);
-                                    if (tunnelBoxes.size() > 80) return; // Prevent excessive draw calls
+                                    tunnelPoints.add(box.getCenter());
+
+                                    y++; // Skip the head block so we don't duplicate
+                                    if (tunnelBoxes.size() >= 120) return; // Prevent performance drops
                                 }
                             }
                         }
@@ -104,30 +177,33 @@ public class TunnelESPModule extends Module {
 
     @Override
     public void renderImGuiConfig() {
-        ImGui.sliderInt("Scan-Reichweite (Blöcke)##tun", radius.getData(), 16, 48);
+        ImGui.sliderInt("Scan-Reichweite (Radius)##tun", scanRadius.getData(), 12, 32);
         ImGui.sliderInt("Min Y (Tiefe / Bedrock)##tun", minY.getData(), -64, 0);
         ImGui.sliderInt("Max Y (Höhe)##tun", maxY.getData(), 0, 64);
         ImGui.checkbox("Tracer zum nächsten Tunnel##tun", drawTracers);
+        ImGui.checkbox("Tunnel-Pfad verbinden (Linie)##tun", connectPath);
         ImGui.spacing();
-        ImGui.textDisabled("Findet 1x2 Gänge & Stollen unter der Erde, die zu geheimen Basen führen.");
+        ImGui.textDisabled("Erkennt 1x2 Gänge & Stollen unter der Erde (Cyan Wireframe + Tracer).");
     }
 
     @Override
     public ModuleConfig toConfig() {
         ModuleConfig cfg = super.toConfig();
-        cfg.putSetting("radius", radius.get());
+        cfg.putSetting("scanRadius", scanRadius.get());
         cfg.putSetting("minY", minY.get());
         cfg.putSetting("maxY", maxY.get());
         cfg.putSetting("drawTracers", drawTracers.get());
+        cfg.putSetting("connectPath", connectPath.get());
         return cfg;
     }
 
     @Override
     public void fromConfig(ModuleConfig cfg) {
         super.fromConfig(cfg);
-        radius.set(cfg.getSetting("radius", radius.get()));
+        scanRadius.set(cfg.getSetting("scanRadius", scanRadius.get()));
         minY.set(cfg.getSetting("minY", minY.get()));
         maxY.set(cfg.getSetting("maxY", maxY.get()));
         drawTracers.set(cfg.getSetting("drawTracers", drawTracers.get()));
+        connectPath.set(cfg.getSetting("connectPath", connectPath.get()));
     }
 }

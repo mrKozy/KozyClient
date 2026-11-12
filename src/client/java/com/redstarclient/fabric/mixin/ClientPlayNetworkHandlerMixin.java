@@ -15,6 +15,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPacketListener.class)
 public class ClientPlayNetworkHandlerMixin {
 
+    // Show splash once per game session when the player first spawns
+    private static boolean splashShown = false;
+
     @Inject(method = "handleSetEntityMotion", at = @At("HEAD"), cancellable = true)
     private void redstar$onVelocity(ClientboundSetEntityMotionPacket packet, CallbackInfo ci) {
         net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
@@ -46,6 +49,11 @@ public class ClientPlayNetworkHandlerMixin {
         com.redstarclient.module.combat.AntiKickModule ak = RedStarClient.MODULES.get(com.redstarclient.module.combat.AntiKickModule.class);
         if (ak != null && ak.isEnabled()) {
             ak.notifySetback();
+        }
+        // Show splash screen once per game session on first spawn
+        if (!splashShown && RedStarClient.GUI != null) {
+            splashShown = true;
+            com.redstarclient.gui.SplashScreen.show();
         }
     }
 

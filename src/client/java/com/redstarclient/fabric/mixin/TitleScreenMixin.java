@@ -79,8 +79,8 @@ public abstract class TitleScreenMixin extends Screen {
         int goldColor = RenderUtils.toARGB(0.96f, 0.82f, 0.22f, alpha);
 
         // Titles
-        graphics.centeredText(this.font, Component.literal("RED STAR CLIENT"), cx, cy + 54, goldColor);
-        graphics.centeredText(this.font, Component.literal("PROLETARIER ALLER LAENDER, VEREINIGT EUCH!"), cx, cy + 68, ringColor);
+        graphics.centeredText(this.font, Component.literal("KOZY CLIENT"), cx, cy + 54, goldColor);
+        graphics.centeredText(this.font, Component.literal("v3.0 — by mr.Kozy"), cx, cy + 68, ringColor);
 
         // Sleek progress bar
         int barW = 160;

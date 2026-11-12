@@ -27,7 +27,7 @@ public final class Icons {
     public static final String COMPASS       = "\uf14e"; // 🧭
     public static final String SLIDERS       = "\uf1de"; // 🎚
     public static final String MUSIC         = "\uf001"; // ♫
-    public static final String HAMMER        = "\uf6e3"; // 🔨
+    public static final String WRENCH        = "\uf0ad"; // 🔧
     public static final String TERMINAL      = "\uf120"; // 💻
     public static final String POWER_OFF     = "\uf011"; // ⏻
     public static final String KEY           = "\uf084"; // 🔑

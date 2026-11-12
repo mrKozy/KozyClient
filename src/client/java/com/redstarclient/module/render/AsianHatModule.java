@@ -28,6 +28,7 @@ public class AsianHatModule extends Module {
     private final ImInt     segments       = new ImInt(18);
     private final ImInt     colorMode      = new ImInt(0); // 0 = Soviet Red/Gold, 1 = Chroma Rainbow, 2 = Custom RGB
     private final ImBoolean drawMiddleRing = new ImBoolean(true);
+    private final ImBoolean invertHat      = new ImBoolean(false);
 
     private final float[] customColor = new float[]{1.0f, 0.2f, 0.2f, 1.0f};
 
@@ -55,7 +56,7 @@ public class AsianHatModule extends Module {
 
     private void renderCosmetics(Player p, float tickDelta) {
         double px = Mth.lerp(tickDelta, p.xOld, p.getX());
-        double py = Mth.lerp(tickDelta, p.yOld, p.getY()) + p.getEyeHeight() + 0.10;
+        double py = Mth.lerp(tickDelta, p.yOld, p.getY()) + p.getEyeHeight() + 0.15;
         double pz = Mth.lerp(tickDelta, p.zOld, p.getZ());
 
         float pitch = Mth.lerp(tickDelta, p.xRotO, p.getXRot());
@@ -70,8 +71,16 @@ public class AsianHatModule extends Module {
         double fz = Math.cos(yawRad) * Math.cos(pitchRad);
         Vec3 forward = new Vec3(fx, fy, fz).normalize();
         Vec3 right = new Vec3(Math.cos(yawRad), 0, Math.sin(yawRad)).normalize();
-        Vec3 up = right.cross(forward).normalize();
-        Vec3 vAxis = up.cross(right).normalize();
+
+        // UP points UPWARDS (forward.cross(right) produces (0, 1, 0) at pitch 0)
+        Vec3 up = forward.cross(right).normalize();
+        if (up.y < 0.1) {
+            up = new Vec3(0, 1, 0);
+        }
+        if (invertHat.get()) {
+            up = up.scale(-1.0);
+        }
+        Vec3 vAxis = right.cross(up).normalize();
 
         Vec3 headCenter = new Vec3(px, py, pz);
         int ribColor = getRibColor();
@@ -206,6 +215,7 @@ public class AsianHatModule extends Module {
 
         ImGui.checkbox("Auf eigenem Spieler (Self) anzeigen##ashat", onSelf);
         ImGui.checkbox("Auf anderen Spielern anzeigen##ashat", onOthers);
+        ImGui.checkbox("Ausrichtung umdrehen (Invert)##ashat", invertHat);
         if (cosmeticStyle.get() == 0) {
             ImGui.checkbox("Mittleren Reif (Geflecht-Ring) zeichnen##ashat", drawMiddleRing);
             ImGui.sliderInt("Rippen-Detail (Segmente)##ashat", segments.getData(), 8, 32);

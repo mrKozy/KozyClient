@@ -1,4 +1,4 @@
-// Red Star Client — SusChunkESPModule
+// KozyClient — SusChunkESPModule
 package com.redstarclient.module.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -15,25 +15,28 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.entity.*;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
  * Sus Chunk ESP (Base & Vault Cluster Finder):
- * Scans loaded chunks down to bedrock for high concentrations of tile entities (chests, hoppers,
- * shulker boxes, spawners, beacons) indicating hidden underground player bases and secret vaults.
+ * Scans loaded chunks down to bedrock for high concentrations of containers & tile entities
+ * (chests, barrels, hoppers, shulkers, spawners, beacons, crafters) indicating hidden
+ * underground player bases and secret stashes. Highlights chunks and stash rooms through walls.
  */
 public class SusChunkESPModule extends Module {
 
-    private final ImInt     scanRadius     = new ImInt(6);
-    private final ImInt     thresholdScore = new ImInt(12);
+    private final ImInt     scanRadius     = new ImInt(8);
+    private final ImInt     thresholdScore = new ImInt(6); // Accessible threshold for smaller bases
     private final ImBoolean tightBox       = new ImBoolean(true);
+    private final ImBoolean chunkOutline   = new ImBoolean(true);
     private final ImBoolean drawTracers    = new ImBoolean(true);
     private final ImBoolean drawStats      = new ImBoolean(true);
     private final ImBoolean notifyChat     = new ImBoolean(true);
@@ -48,6 +51,7 @@ public class SusChunkESPModule extends Module {
 
     private static class ChunkReport {
         int chests = 0;
+        int barrels = 0;
         int enderChests = 0;
         int shulkers = 0;
         int furnaces = 0;
@@ -75,13 +79,13 @@ public class SusChunkESPModule extends Module {
 
         int calculateScore() {
             // Extra weight (+4) for hidden containers located deep underground below y=0 near bedrock!
-            return (chests * 2) + (enderChests * 3) + (shulkers * 8) +
+            return (chests * 2) + (barrels * 2) + (enderChests * 3) + (shulkers * 8) +
                    (furnaces * 2) + (hoppers * 3) + (spawners * 12) +
-                   (beacons * 15) + (dispensers * 1) + (deepslateCount * 4);
+                   (beacons * 15) + (dispensers * 2) + (deepslateCount * 4);
         }
 
         int totalContainers() {
-            return chests + enderChests + shulkers + hoppers + furnaces;
+            return chests + barrels + enderChests + shulkers + hoppers + furnaces + dispensers;
         }
     }
 
@@ -89,6 +93,7 @@ public class SusChunkESPModule extends Module {
     public void onRenderWorld3D(PoseStack poseStack, Camera camera, float tickDelta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
+        if (StreamProofModule.shouldHideVisuals()) return;
 
         long now = System.currentTimeMillis();
         if (now - lastClearTime > 60000) {
@@ -98,7 +103,7 @@ public class SusChunkESPModule extends Module {
 
         int pcx = mc.player.getBlockX() >> 4;
         int pcz = mc.player.getBlockZ() >> 4;
-        int rad = Math.min(scanRadius.get(), 10);
+        int rad = Math.min(scanRadius.get(), 12);
 
         Vec3 bestCenter = null;
         int highestScore = 0;
@@ -108,14 +113,26 @@ public class SusChunkESPModule extends Module {
                 LevelChunk chunk = mc.level.getChunkSource().getChunk(cx, cz, false);
                 if (chunk == null) continue;
 
+                List<BlockEntity> blockEntities;
+                try {
+                    blockEntities = new ArrayList<>(chunk.getBlockEntities().values());
+                } catch (Throwable t) {
+                    continue;
+                }
+
+                if (blockEntities.isEmpty()) continue;
+
                 ChunkReport rep = new ChunkReport();
 
-                for (BlockEntity be : chunk.getBlockEntities().values()) {
+                for (BlockEntity be : blockEntities) {
                     if (be.isRemoved()) continue;
                     BlockPos p = be.getBlockPos();
 
                     if (be instanceof ChestBlockEntity) {
                         rep.chests++;
+                        rep.includePos(p);
+                    } else if (be instanceof BarrelBlockEntity) {
+                        rep.barrels++;
                         rep.includePos(p);
                     } else if (be instanceof EnderChestBlockEntity) {
                         rep.enderChests++;
@@ -142,41 +159,61 @@ public class SusChunkESPModule extends Module {
                 }
 
                 int score = rep.calculateScore();
-                if (score >= thresholdScore.get() && rep.totalContainers() > 0) {
-                    AABB box;
-                    if (tightBox.get() && rep.minX <= rep.maxX) {
-                        box = new AABB(rep.minX - 0.2, rep.minY - 0.2, rep.minZ - 0.2,
-                                       rep.maxX + 1.2, rep.maxY + 1.2, rep.maxZ + 1.2);
-                    } else {
-                        int y0 = Math.max(-64, chunk.getMinY());
-                        int y1 = Math.min(320, chunk.getMaxY());
-                        box = new AABB(cx * 16.0, y0, cz * 16.0,
-                                       cx * 16.0 + 16.0, y1, cz * 16.0 + 16.0);
-                    }
-
+                if (score >= thresholdScore.get() && (rep.totalContainers() > 0 || rep.spawners > 0)) {
                     int color;
-                    if (score < 25) {
+                    if (score < 20) {
                         color = RenderUtils.toARGB(1.0f, 0.85f, 0.1f, 1.0f); // Gold
-                    } else if (score < 60) {
+                    } else if (score < 50) {
                         color = RenderUtils.toARGB(1.0f, 0.45f, 0.05f, 1.0f); // Vivid Orange
                     } else {
-                        color = RenderUtils.toARGB(1.0f, 0.1f, 0.35f, 1.0f); // Neon Red/Magenta (Mega Base)
+                        color = RenderUtils.toARGB(1.0f, 0.1f, 0.35f, 1.0f); // Neon Magenta / Red (Mega Base)
                     }
 
-                    RenderUtils.drawBox3D(poseStack, camera, box, color, 2.0f, 0.15f);
-
-                    Vec3 center = box.getCenter();
-                    if (score > highestScore) {
-                        highestScore = score;
-                        bestCenter = center;
-                    }
-
-                    if (drawStats.get()) {
-                        String stats = String.format("SUS BASE [Score: %d] (%d Kisten, %d Hopper, %d Bedrock-Stash)",
-                                score, rep.chests + rep.shulkers, rep.hoppers, rep.deepslateCount);
+                    // 1. Draw tight bounding box around the container stash
+                    if (tightBox.get() && rep.minX <= rep.maxX) {
+                        AABB stashBox = new AABB(rep.minX - 0.25, rep.minY - 0.25, rep.minZ - 0.25,
+                                                 rep.maxX + 1.25, rep.maxY + 1.25, rep.maxZ + 1.25);
+                        net.minecraft.gizmos.GizmoStyle stashStyle = net.minecraft.gizmos.GizmoStyle.strokeAndFill(
+                                color, 2.0f, (color & 0x00FFFFFF) | 0x30000000);
                         try {
-                            BlockPos bpos = BlockPos.containing(center.x, box.maxY + 0.5, center.z);
-                            net.minecraft.gizmos.Gizmos.billboardTextOverBlock(stats, bpos, color, RenderUtils.toARGB(0.0f, 0.0f, 0.0f, 0.75f), 1.0f)
+                            net.minecraft.gizmos.Gizmos.cuboid(stashBox, stashStyle).setAlwaysOnTop();
+                        } catch (Throwable ignored) {}
+
+                        Vec3 center = stashBox.getCenter();
+                        if (score > highestScore) {
+                            highestScore = score;
+                            bestCenter = center;
+                        }
+                    }
+
+                    // 2. Draw 16x16 full chunk column outline so it's impossible to miss
+                    if (chunkOutline.get()) {
+                        double x0 = cx * 16.0;
+                        double z0 = cz * 16.0;
+                        double x1 = x0 + 16.0;
+                        double z1 = z0 + 16.0;
+                        double y0 = Math.max(-64.0, (double) chunk.getMinY());
+                        double y1 = Math.min(320.0, (double) chunk.getMaxY());
+
+                        AABB chunkBox = new AABB(x0, y0, z0, x1, y1, z1);
+                        net.minecraft.gizmos.GizmoStyle chunkStyle = net.minecraft.gizmos.GizmoStyle.stroke(color, 1.5f);
+                        try {
+                            net.minecraft.gizmos.Gizmos.cuboid(chunkBox, chunkStyle).setAlwaysOnTop();
+                        } catch (Throwable ignored) {}
+
+                        if (bestCenter == null || score > highestScore) {
+                            bestCenter = new Vec3((x0 + x1) * 0.5, (y0 + y1) * 0.5, (z0 + z1) * 0.5);
+                            highestScore = score;
+                        }
+                    }
+
+                    // 3. 3D Billboard text stats over the chunk
+                    if (drawStats.get() && rep.minX <= rep.maxX) {
+                        String stats = String.format("SUS BASE [Score: %d] (%d Kisten, %d Hopper, %d Bedrock-Stash)",
+                                score, rep.chests + rep.shulkers + rep.barrels, rep.hoppers, rep.deepslateCount);
+                        try {
+                            BlockPos bpos = BlockPos.containing((rep.minX + rep.maxX) * 0.5, rep.maxY + 1.5, (rep.minZ + rep.maxZ) * 0.5);
+                            net.minecraft.gizmos.Gizmos.billboardTextOverBlock(stats, bpos, color, RenderUtils.toARGB(0.0f, 0.0f, 0.0f, 0.80f), 1.1f)
                                     .setAlwaysOnTop();
                         } catch (Throwable ignored) {}
                     }
@@ -193,8 +230,10 @@ public class SusChunkESPModule extends Module {
         // Draw tracer to the highest-scoring base
         if (drawTracers.get() && bestCenter != null) {
             Vec3 eye = mc.player.getEyePosition(tickDelta);
-            net.minecraft.gizmos.Gizmos.line(eye, bestCenter, RenderUtils.toARGB(1.0f, 0.2f, 0.2f, 1.0f), 2.0f)
-                    .setAlwaysOnTop();
+            try {
+                net.minecraft.gizmos.Gizmos.line(eye, bestCenter, RenderUtils.toARGB(1.0f, 0.2f, 0.2f, 1.0f), 2.2f)
+                        .setAlwaysOnTop();
+            } catch (Throwable ignored) {}
         }
     }
 
@@ -220,8 +259,9 @@ public class SusChunkESPModule extends Module {
     @Override
     public void renderImGuiConfig() {
         ImGui.sliderInt("Such-Radius (Chunks)##sus", scanRadius.getData(), 2, 12);
-        ImGui.sliderInt("Verdachts-Schwelle (Score)##sus", thresholdScore.getData(), 5, 50);
+        ImGui.sliderInt("Verdachts-Schwelle (Score)##sus", thresholdScore.getData(), 3, 30);
         ImGui.checkbox("Exakte Raum-Box (Tight Box)##sus", tightBox);
+        ImGui.checkbox("Voller Chunk-Rahmen (16x16)##sus", chunkOutline);
         ImGui.checkbox("Tracer-Linie zur größten Basis##sus", drawTracers);
         ImGui.checkbox("Cluster-Statistik als 3D-Text##sus", drawStats);
         ImGui.separator();
@@ -237,6 +277,7 @@ public class SusChunkESPModule extends Module {
         cfg.putSetting("scanRadius", scanRadius.get());
         cfg.putSetting("thresholdScore", thresholdScore.get());
         cfg.putSetting("tightBox", tightBox.get());
+        cfg.putSetting("chunkOutline", chunkOutline.get());
         cfg.putSetting("drawTracers", drawTracers.get());
         cfg.putSetting("drawStats", drawStats.get());
         cfg.putSetting("notifyChat", notifyChat.get());
@@ -250,6 +291,7 @@ public class SusChunkESPModule extends Module {
         scanRadius.set(cfg.getSetting("scanRadius", scanRadius.get()));
         thresholdScore.set(cfg.getSetting("thresholdScore", thresholdScore.get()));
         tightBox.set(cfg.getSetting("tightBox", tightBox.get()));
+        chunkOutline.set(cfg.getSetting("chunkOutline", chunkOutline.get()));
         drawTracers.set(cfg.getSetting("drawTracers", drawTracers.get()));
         drawStats.set(cfg.getSetting("drawStats", drawStats.get()));
         notifyChat.set(cfg.getSetting("notifyChat", notifyChat.get()));

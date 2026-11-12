@@ -19,6 +19,7 @@ public class RedStarGui {
 
     private final MainMenuWindow  mainMenu  = new MainMenuWindow();
     private final WatermarkWidget watermark = new WatermarkWidget();
+    private final com.redstarclient.gui.widget.SpotifyWidget spotifyWidget = new com.redstarclient.gui.widget.SpotifyWidget();
 
     /** Direct native GLFW key polling to guarantee menu toggle and module keybinds on any version. */
     public void checkDirectKeyInputs() {
@@ -139,6 +140,12 @@ public class RedStarGui {
             // Apply Soviet theme
             CommunistTheme.apply();
             themeApplied = true;
+
+            // Splash screen (renders over everything else while active, blocks menu)
+            if (SplashScreen.render()) {
+                // Splash is active - skip normal UI
+                return;
+            }
 
             // Watermark (hidden if StreamProof is active)
             if (!com.redstarclient.module.render.StreamProofModule.shouldHideWatermark()) {
