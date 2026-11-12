@@ -41,6 +41,7 @@ public class SusChunkESPModule extends Module {
     private final ImBoolean drawStats      = new ImBoolean(true);
     private final ImBoolean notifyChat     = new ImBoolean(true);
     private final ImBoolean notifySound    = new ImBoolean(true);
+    private final ImBoolean drawFloorSlab  = new ImBoolean(true);
 
     private final Set<Long> notifiedChunks = new HashSet<>();
     private long lastClearTime = 0;
@@ -207,7 +208,27 @@ public class SusChunkESPModule extends Module {
                         }
                     }
 
-                    // 3. 3D Billboard text stats over the chunk
+                    // 3. Flat red floor slab (16x16 chunk footprint, thin Y)
+                    if (drawFloorSlab.get()) {
+                        double sx0 = cx * 16.0;
+                        double sz0 = cz * 16.0;
+                        double sx1 = sx0 + 16.0;
+                        double sz1 = sz0 + 16.0;
+                        // Place slab at the floor of the stash cluster (or bedrock-level Y if unknown)
+                        double slabY = (rep.minY < Integer.MAX_VALUE) ? (double) rep.minY - 0.5 : -63.0;
+                        // Alpha scales with score so bigger bases glow brighter
+                        float slabAlpha = 0.28f + Math.min(0.32f, score / 160.0f);
+                        int slabFill   = RenderUtils.toARGB(0.9f, 0.08f, 0.08f, slabAlpha);
+                        int slabStroke = RenderUtils.toARGB(0.95f, 0.08f, 0.08f, 0.92f);
+                        AABB slabBox = new AABB(sx0, slabY, sz0, sx1, slabY + 0.12, sz1);
+                        net.minecraft.gizmos.GizmoStyle slabStyle =
+                                net.minecraft.gizmos.GizmoStyle.strokeAndFill(slabStroke, 1.5f, slabFill);
+                        try {
+                            net.minecraft.gizmos.Gizmos.cuboid(slabBox, slabStyle).setAlwaysOnTop();
+                        } catch (Throwable ignored) {}
+                    }
+
+                    // 4. 3D Billboard text stats over the chunk
                     if (drawStats.get() && rep.minX <= rep.maxX) {
                         String stats = String.format("SUS BASE [Score: %d] (%d Kisten, %d Hopper, %d Bedrock-Stash)",
                                 score, rep.chests + rep.shulkers + rep.barrels, rep.hoppers, rep.deepslateCount);
@@ -267,6 +288,8 @@ public class SusChunkESPModule extends Module {
         ImGui.separator();
         ImGui.checkbox("Chat-Benachrichtigung bei Fund##sus", notifyChat);
         ImGui.checkbox("Sound-Effekt bei Fund##sus", notifySound);
+        ImGui.separator();
+        ImGui.checkbox("Roter Boden-Slab (16x16)##sus", drawFloorSlab);
         ImGui.spacing();
         ImGui.textDisabled("Scannt bis Y=-64 (Bedrock). Container unter Y=0 erhalten Extra-Score.");
     }
@@ -282,6 +305,7 @@ public class SusChunkESPModule extends Module {
         cfg.putSetting("drawStats", drawStats.get());
         cfg.putSetting("notifyChat", notifyChat.get());
         cfg.putSetting("notifySound", notifySound.get());
+        cfg.putSetting("drawFloorSlab", drawFloorSlab.get());
         return cfg;
     }
 
@@ -296,5 +320,6 @@ public class SusChunkESPModule extends Module {
         drawStats.set(cfg.getSetting("drawStats", drawStats.get()));
         notifyChat.set(cfg.getSetting("notifyChat", notifyChat.get()));
         notifySound.set(cfg.getSetting("notifySound", notifySound.get()));
+        drawFloorSlab.set(cfg.getSetting("drawFloorSlab", drawFloorSlab.get()));
     }
 }
