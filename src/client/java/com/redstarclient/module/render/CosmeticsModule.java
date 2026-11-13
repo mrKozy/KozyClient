@@ -100,7 +100,7 @@ public class CosmeticsModule extends Module {
 
         // Render Tung Tung Sahur character rig when enabled
         if (getCharacterSkin() == CharacterSkin.TUNG_TUNG_SAHUR && showThirdPerson.get()) {
-            renderTungTungSahur(mc.player, tickDelta);
+            com.redstarclient.cosmetics.AnubisCharacterRenderer.renderTung(mc.player, poseStack, camera, tickDelta);
         }
     }
 
