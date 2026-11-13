@@ -139,6 +139,7 @@ public class ModuleManager {
         register(new StaffESPModule());
         register(new SusChunkESPModule());
         register(new AsianHatModule());
+        register(new CosmeticsModule());
         register(new TunnelESPModule());
 
         // 🛠️ Player & World

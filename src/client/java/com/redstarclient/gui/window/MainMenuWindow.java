@@ -26,6 +26,7 @@ public class MainMenuWindow {
 
     public enum TopTab {
         MODULES,
+        COSMETICS,
         CONFIG,
         SETTINGS
     }
@@ -64,6 +65,8 @@ public class MainMenuWindow {
             // ── 2. Render Active Tab Content ──────────────────────────────────────
             if (activeTab == TopTab.MODULES) {
                 renderClickGuiColumns();
+            } else if (activeTab == TopTab.COSMETICS) {
+                renderCosmeticsWindow();
             } else if (activeTab == TopTab.CONFIG) {
                 renderConfigWindow();
             } else if (activeTab == TopTab.SETTINGS) {
@@ -151,6 +154,15 @@ public class MainMenuWindow {
                 activeTab = TopTab.MODULES;
             }
             if (isMod) popActiveTabStyle();
+
+            // Tab: Cosmetics
+            ImGui.sameLine();
+            boolean isCos = (activeTab == TopTab.COSMETICS);
+            if (isCos) pushActiveTabStyle();
+            if (ImGui.smallButton(" Cosmetics ")) {
+                activeTab = TopTab.COSMETICS;
+            }
+            if (isCos) popActiveTabStyle();
 
             // Tab: Config
             ImGui.sameLine();
@@ -565,6 +577,64 @@ public class MainMenuWindow {
             ImGui.spacing();
             if (!statusMessage.isEmpty() && System.currentTimeMillis() - statusMessageTime < 4000L) {
                 ImGui.textColored(0.35f, 0.90f, 0.45f, 1.0f, Icons.CHECK + " " + statusMessage);
+            }
+        }
+        ImGui.end();
+
+        if (!pOpen.get()) {
+            activeTab = TopTab.MODULES;
+        }
+    }
+
+    /**
+     * Dedicated Cosmetics tab: Sword models (Butterfly, Karambit, Katana, Red Dagger),
+     * Character models & skins (Tung Tung Tung Sahur), and Head wear (Asian Hat, Halo, Horns).
+     */
+    private void renderCosmeticsWindow() {
+        float screenWidth = ImGui.getIO().getDisplaySizeX();
+        float screenHeight = ImGui.getIO().getDisplaySizeY();
+
+        float winW = Math.min(620.0f, screenWidth - 60.0f);
+        float winH = Math.min(500.0f, screenHeight - 80.0f);
+        ImGui.setNextWindowPos((screenWidth - winW) * 0.5f, (screenHeight - winH) * 0.5f + 16.0f, ImGuiCond.FirstUseEver);
+        ImGui.setNextWindowSize(winW, winH, ImGuiCond.FirstUseEver);
+
+        int flags = ImGuiWindowFlags.NoCollapse;
+        ImBoolean pOpen = new ImBoolean(true);
+
+        if (ImGui.begin("Cosmetics & Skins##KozyCosmetics", pOpen, flags)) {
+            ImGui.textColored(CommunistTheme.SOVIET_GOLD[0], CommunistTheme.SOVIET_GOLD[1], CommunistTheme.SOVIET_GOLD[2], 1.0f,
+                    Icons.STAR + " Kozy Cosmetics & 3D Skin Models");
+            ImGui.separator();
+            ImGui.spacing();
+
+            com.redstarclient.module.render.CosmeticsModule cosMod = RedStarClient.MODULES.get(com.redstarclient.module.render.CosmeticsModule.class);
+            if (cosMod != null) {
+                boolean enabled = cosMod.isEnabled();
+                if (ImGui.checkbox("Cosmetics Aktivieren##cosToggle", enabled)) {
+                    cosMod.setEnabled(!enabled);
+                }
+
+                ImGui.spacing();
+                cosMod.renderImGuiConfig();
+            }
+
+            ImGui.spacing();
+            ImGui.separator();
+            ImGui.spacing();
+
+            // Head cosmetics quick config (AsianHatModule)
+            com.redstarclient.module.render.AsianHatModule hatMod = RedStarClient.MODULES.get(com.redstarclient.module.render.AsianHatModule.class);
+            if (hatMod != null) {
+                ImGui.textColored(CommunistTheme.SOVIET_RED[0], CommunistTheme.SOVIET_RED[1], CommunistTheme.SOVIET_RED[2], 1.0f,
+                        Icons.USER + " Head Wear (Asian Hat & Horns):");
+                boolean hatEnabled = hatMod.isEnabled();
+                if (ImGui.checkbox("Head Cosmetics Aktivieren##hatToggle", hatEnabled)) {
+                    hatMod.setEnabled(!hatEnabled);
+                }
+                if (hatMod.isEnabled()) {
+                    hatMod.renderImGuiConfig();
+                }
             }
         }
         ImGui.end();

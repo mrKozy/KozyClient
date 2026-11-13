@@ -76,8 +76,11 @@ public abstract class ItemInHandRendererMixin {
         boolean isHoldingUse = mc.options.keyUse.isDown();
         boolean isBlocking = mod.isBlockHit() && isHoldingUse;
 
+        com.redstarclient.module.render.CosmeticsModule cos = RedStarClient.MODULES.get(com.redstarclient.module.render.CosmeticsModule.class);
+        boolean hasCosmetic = cos != null && cos.isEnabled() && cos.getSwordModel() != com.redstarclient.module.render.CosmeticsModule.SwordModel.DEFAULT;
+
         boolean hasCustomTransform = mod.getScale() != 1.0f || mod.getPosX() != 0.0f || mod.getPosY() != 0.0f || mod.getPosZ() != 0.0f;
-        if (!isBlocking && !hasCustomTransform) {
+        if (!isBlocking && !hasCustomTransform && !hasCosmetic) {
             return;
         }
 
@@ -86,6 +89,39 @@ public abstract class ItemInHandRendererMixin {
         int side = isRightHand ? 1 : -1;
 
         poseStack.pushPose();
+
+        // Custom sword model transforms & styling based on CosmeticsModule
+        if (hasCosmetic) {
+            com.redstarclient.module.render.CosmeticsModule.SwordModel sm = cos.getSwordModel();
+            switch (sm) {
+                case BUTTERFLY:
+                    // Sleek flipped butterfly knife grip
+                    poseStack.translate(side * 0.04f, -0.06f, 0.02f);
+                    poseStack.mulPose(Axis.ZP.rotationDegrees(side * 18.0f));
+                    poseStack.scale(0.82f, 0.82f, 0.82f);
+                    break;
+                case KARAMBIT:
+                    // Curved claw reverse grip
+                    poseStack.translate(side * 0.06f, -0.04f, 0.04f);
+                    poseStack.mulPose(Axis.XP.rotationDegrees(35.0f));
+                    poseStack.mulPose(Axis.ZP.rotationDegrees(side * -25.0f));
+                    poseStack.scale(0.78f, 0.78f, 0.78f);
+                    break;
+                case KATANA:
+                    // Long slender katana stance
+                    poseStack.translate(side * -0.05f, 0.08f, -0.08f);
+                    poseStack.mulPose(Axis.XP.rotationDegrees(-12.0f));
+                    poseStack.scale(1.22f, 1.22f, 1.22f);
+                    break;
+                case RED_DAGGER:
+                    // Compact tactical red dagger
+                    poseStack.translate(side * 0.02f, -0.02f, 0.05f);
+                    poseStack.scale(0.72f, 0.72f, 0.72f);
+                    break;
+                default:
+                    break;
+            }
+        }
 
         // Custom scale & position offsets
         if (mod.getScale() != 1.0f) {
