@@ -90,36 +90,28 @@ public abstract class ItemInHandRendererMixin {
 
         poseStack.pushPose();
 
-        // Custom sword model transforms & styling based on CosmeticsModule
+        // Custom Anubis CS:GO Knife 3D Models & Textures (Butterfly, Karambit, Katana, Red Dagger)
         if (hasCosmetic) {
             com.redstarclient.module.render.CosmeticsModule.SwordModel sm = cos.getSwordModel();
-            switch (sm) {
-                case BUTTERFLY:
-                    // Sleek flipped butterfly knife grip
-                    poseStack.translate(side * 0.04f, -0.06f, 0.02f);
-                    poseStack.mulPose(Axis.ZP.rotationDegrees(side * 18.0f));
-                    poseStack.scale(0.82f, 0.82f, 0.82f);
-                    break;
-                case KARAMBIT:
-                    // Curved claw reverse grip
-                    poseStack.translate(side * 0.06f, -0.04f, 0.04f);
-                    poseStack.mulPose(Axis.XP.rotationDegrees(35.0f));
-                    poseStack.mulPose(Axis.ZP.rotationDegrees(side * -25.0f));
-                    poseStack.scale(0.78f, 0.78f, 0.78f);
-                    break;
-                case KATANA:
-                    // Long slender katana stance
-                    poseStack.translate(side * -0.05f, 0.08f, -0.08f);
-                    poseStack.mulPose(Axis.XP.rotationDegrees(-12.0f));
-                    poseStack.scale(1.22f, 1.22f, 1.22f);
-                    break;
-                case RED_DAGGER:
-                    // Compact tactical red dagger
-                    poseStack.translate(side * 0.02f, -0.02f, 0.05f);
-                    poseStack.scale(0.72f, 0.72f, 0.72f);
-                    break;
-                default:
-                    break;
+            this.applyItemArmTransform(poseStack, arm, equipProgress);
+
+            if (isBlocking) {
+                poseStack.translate(side * -0.14142136f, 0.08f, 0.14142136f);
+                poseStack.mulPose(Axis.XP.rotationDegrees(-102.25f));
+                poseStack.mulPose(Axis.YP.rotationDegrees(side * 13.365f));
+                poseStack.mulPose(Axis.ZP.rotationDegrees(side * 78.05f));
+            }
+            if (swingProgress > 0.0f) {
+                this.swingArm(swingProgress, poseStack, side, arm);
+            }
+
+            boolean rendered = com.redstarclient.cosmetics.knife.KnifeRenderer.renderKnife(
+                poseStack, buffer, combinedLight, stack, sm, side, swingProgress, equipProgress
+            );
+            if (rendered) {
+                poseStack.popPose();
+                ci.cancel();
+                return;
             }
         }
 

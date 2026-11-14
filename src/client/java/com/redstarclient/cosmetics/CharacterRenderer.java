@@ -227,6 +227,20 @@ public final class CharacterRenderer {
             buf[o + 5] = tz;
         }
 
+        float[] flat = s.flat;
+        if (flat != null) {
+            for (int v = 0; v < n; v++) {
+                if (flat[v] > 0.0F) {
+                    com.redstarclient.cosmetics.kit.Lights.WORLD.flatten(buf, v * 6 + 3, flat[v]);
+                }
+            }
+        }
+
+        // Boost lighting floor so textures are vibrant and clear, not murky/dark
+        int block = Math.max(12, light & 0xFFFF);
+        int sky = Math.max(12, (light >> 16) & 0xFFFF);
+        int clearLight = (sky << 16) | block;
+
         int[] quads = s.quads;
         int[] color = s.color;
         float[] uv = s.uv;
@@ -236,7 +250,7 @@ public final class CharacterRenderer {
             int v = quads[q];
             int o = v * 6;
             int c = alpha == 255 ? color[v] : color[v] & 16777215 | alpha << 24;
-            int l = glow != null && glow[v] != 0 ? 15728880 : light;
+            int l = glow != null && glow[v] != 0 ? 15728880 : clearLight;
             out.addVertex(buf[o], buf[o + 1], buf[o + 2], c, uv[v * 2], uv[v * 2 + 1], overlay, l, buf[o + 3], buf[o + 4], buf[o + 5]);
         }
     }
