@@ -19,8 +19,9 @@ public class KeyboardMixin {
         if (action == GLFW.GLFW_PRESS) {
             boolean consumed = RedStarClient.handleKeyInput(key);
             if (!consumed) {
-                // Dispatch to module keybinds
+                // Dispatch to module keybinds & inspect handler
                 RedStarClient.MODULES.onKeyPress(key);
+                com.redstarclient.cosmetics.knife.InspectHandler.onKeyPress(key);
                 RedStarClient.EVENT_BUS.post(new KeyPressEvent(key, action));
             }
         }

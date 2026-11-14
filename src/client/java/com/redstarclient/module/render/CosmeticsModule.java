@@ -54,6 +54,8 @@ public class CosmeticsModule extends Module {
 
     private final ImInt selectedSwordModel = new ImInt(1); // 1 = Butterfly by default
     private final ImInt selectedCharacter  = new ImInt(1); // 1 = Tung Tung Sahur by default
+    private final ImInt inspectKey         = new ImInt(org.lwjgl.glfw.GLFW.GLFW_KEY_F); // Default F key for inspect
+    private boolean listeningForInspectKey = false;
     private final ImBoolean showThirdPerson = new ImBoolean(true);
     private final ImBoolean redAura         = new ImBoolean(true);
     private final ImBoolean drumAnimation   = new ImBoolean(true); // Sahur drum animation
@@ -83,6 +85,14 @@ public class CosmeticsModule extends Module {
 
     public void setCharacterSkin(CharacterSkin skin) {
         selectedCharacter.set(skin.ordinal());
+    }
+
+    public int getInspectKey() {
+        return inspectKey.get();
+    }
+
+    public void setInspectKey(int key) {
+        inspectKey.set(key);
     }
 
     public boolean isShowThirdPerson() {
@@ -129,6 +139,27 @@ public class CosmeticsModule extends Module {
 
         ImGui.spacing();
         ImGui.separator();
+        ImGui.text("Knife Inspect Animation:");
+        String keyName = listeningForInspectKey ? "Taste druecken..." : com.redstarclient.util.KeyUtils.getKeyName(inspectKey.get());
+        if (ImGui.button("Inspect Hotkey: [" + keyName + "]##btnInspectKey")) {
+            listeningForInspectKey = true;
+        }
+        if (listeningForInspectKey) {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc != null && mc.getWindow() != null) {
+                long handle = mc.getWindow().handle();
+                for (int k = org.lwjgl.glfw.GLFW.GLFW_KEY_SPACE; k <= org.lwjgl.glfw.GLFW.GLFW_KEY_LAST; k++) {
+                    if (org.lwjgl.glfw.GLFW.glfwGetKey(handle, k) == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
+                        inspectKey.set(k);
+                        listeningForInspectKey = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        ImGui.spacing();
+        ImGui.separator();
         ImGui.checkbox("In 3rd Person anzeigen", showThirdPerson);
         ImGui.checkbox("Rote Aura-Effekte aktivieren", redAura);
         ImGui.checkbox("Sahur Drum-Animation", drumAnimation);
@@ -139,6 +170,7 @@ public class CosmeticsModule extends Module {
         ModuleConfig cfg = super.toConfig();
         cfg.putSetting("selectedSwordModel", selectedSwordModel.get());
         cfg.putSetting("selectedCharacter", selectedCharacter.get());
+        cfg.putSetting("inspectKey", inspectKey.get());
         cfg.putSetting("showThirdPerson", showThirdPerson.get());
         cfg.putSetting("redAura", redAura.get());
         cfg.putSetting("drumAnimation", drumAnimation.get());
@@ -150,6 +182,7 @@ public class CosmeticsModule extends Module {
         super.fromConfig(cfg);
         selectedSwordModel.set(cfg.getSetting("selectedSwordModel", selectedSwordModel.get()));
         selectedCharacter.set(cfg.getSetting("selectedCharacter", selectedCharacter.get()));
+        inspectKey.set(cfg.getSetting("inspectKey", inspectKey.get()));
         showThirdPerson.set(cfg.getSetting("showThirdPerson", showThirdPerson.get()));
         redAura.set(cfg.getSetting("redAura", redAura.get()));
         drumAnimation.set(cfg.getSetting("drumAnimation", drumAnimation.get()));

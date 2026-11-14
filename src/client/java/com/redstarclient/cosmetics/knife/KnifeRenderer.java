@@ -61,70 +61,159 @@ public final class KnifeRenderer {
         int[] palette = mat.palette;
         int boostedLight = Math.max(light, 0x00F000F0); // Ensure clear, vibrant visibility
 
+        boolean inspecting = InspectHandler.isInspecting();
+        float t = inspecting ? InspectHandler.getProgress() : 0.0f;
+
         poseStack.pushPose();
 
         switch (swordModel) {
             case BUTTERFLY: {
-                // CS:GO Butterfly Knife First-Person Position & Angle
-                poseStack.translate(side * 0.42f, -0.42f, -0.62f);
-                poseStack.mulPose(Axis.XP.rotationDegrees(-65.0f));
-                poseStack.mulPose(Axis.YP.rotationDegrees(side * 40.0f));
-                poseStack.mulPose(Axis.ZP.rotationDegrees(side * -25.0f));
+                if (inspecting) {
+                    // CS:GO Butterfly Knife Inspect Spin & Handle Flip Animation
+                    float spinZ = t * 720.0f;
+                    float wobbleX = (float) Math.sin(t * Math.PI * 2) * 15.0f;
+                    float liftY = (float) Math.sin(t * Math.PI) * 0.08f;
 
-                float scale = 0.024f;
-                poseStack.scale(scale, scale, scale);
+                    poseStack.translate(side * 0.42f, -0.40f + liftY, -0.58f);
+                    poseStack.mulPose(Axis.XP.rotationDegrees(-65.0f + wobbleX));
+                    poseStack.mulPose(Axis.YP.rotationDegrees(side * 40.0f));
+                    poseStack.mulPose(Axis.ZP.rotationDegrees(side * (-25.0f + spinZ)));
 
-                collector.submitCustomGeometry(poseStack, SOLID_KNIFE, (pose, out) -> {
-                    butterflyBlade.emit(pose, out, palette, boostedLight);
-                    butterflyHandle1.emit(pose, out, palette, boostedLight);
-                    butterflyHandle2.emit(pose, out, palette, boostedLight);
-                });
+                    float scale = 0.024f;
+                    poseStack.scale(scale, scale, scale);
+
+                    // Blade
+                    collector.submitCustomGeometry(poseStack, SOLID_KNIFE, (pose, out) -> {
+                        butterflyBlade.emit(pose, out, palette, boostedLight);
+                    });
+
+                    // Handle 1 (Rotates around pin during trick)
+                    float h1Rot = (float) Math.sin(t * Math.PI * 4) * 150.0f;
+                    poseStack.pushPose();
+                    poseStack.mulPose(Axis.ZP.rotationDegrees(h1Rot));
+                    collector.submitCustomGeometry(poseStack, SOLID_KNIFE, (pose, out) -> {
+                        butterflyHandle1.emit(pose, out, palette, boostedLight);
+                    });
+                    poseStack.popPose();
+
+                    // Handle 2 (Counter-rotates)
+                    float h2Rot = -(float) Math.sin(t * Math.PI * 4) * 150.0f;
+                    poseStack.pushPose();
+                    poseStack.mulPose(Axis.ZP.rotationDegrees(h2Rot));
+                    collector.submitCustomGeometry(poseStack, SOLID_KNIFE, (pose, out) -> {
+                        butterflyHandle2.emit(pose, out, palette, boostedLight);
+                    });
+                    poseStack.popPose();
+                } else {
+                    // Normal idle stance
+                    poseStack.translate(side * 0.42f, -0.42f, -0.62f);
+                    poseStack.mulPose(Axis.XP.rotationDegrees(-65.0f));
+                    poseStack.mulPose(Axis.YP.rotationDegrees(side * 40.0f));
+                    poseStack.mulPose(Axis.ZP.rotationDegrees(side * -25.0f));
+
+                    float scale = 0.024f;
+                    poseStack.scale(scale, scale, scale);
+
+                    collector.submitCustomGeometry(poseStack, SOLID_KNIFE, (pose, out) -> {
+                        butterflyBlade.emit(pose, out, palette, boostedLight);
+                        butterflyHandle1.emit(pose, out, palette, boostedLight);
+                        butterflyHandle2.emit(pose, out, palette, boostedLight);
+                    });
+                }
                 break;
             }
             case KARAMBIT: {
-                // CS:GO Karambit Reverse Grip Position & Curve
-                poseStack.translate(side * 0.38f, -0.38f, -0.58f);
-                poseStack.mulPose(Axis.XP.rotationDegrees(-45.0f));
-                poseStack.mulPose(Axis.YP.rotationDegrees(side * 55.0f));
-                poseStack.mulPose(Axis.ZP.rotationDegrees(side * -110.0f));
+                if (inspecting) {
+                    // CS:GO Karambit 360 Spin Around Finger Ring
+                    float spin = t * 720.0f;
+                    float liftY = (float) Math.sin(t * Math.PI) * 0.06f;
 
-                float scale = 0.018f;
-                poseStack.scale(scale, scale, scale);
+                    poseStack.translate(side * 0.38f, -0.36f + liftY, -0.56f);
+                    poseStack.mulPose(Axis.XP.rotationDegrees(-45.0f));
+                    poseStack.mulPose(Axis.YP.rotationDegrees(side * 55.0f));
+                    poseStack.mulPose(Axis.ZP.rotationDegrees(side * (-110.0f + spin)));
 
-                collector.submitCustomGeometry(poseStack, SOLID_KNIFE, (pose, out) -> {
-                    karambitMesh.emit(pose, out, palette, boostedLight);
-                });
+                    float scale = 0.018f;
+                    poseStack.scale(scale, scale, scale);
+
+                    collector.submitCustomGeometry(poseStack, SOLID_KNIFE, (pose, out) -> {
+                        karambitMesh.emit(pose, out, palette, boostedLight);
+                    });
+                } else {
+                    // Normal idle reverse grip
+                    poseStack.translate(side * 0.38f, -0.38f, -0.58f);
+                    poseStack.mulPose(Axis.XP.rotationDegrees(-45.0f));
+                    poseStack.mulPose(Axis.YP.rotationDegrees(side * 55.0f));
+                    poseStack.mulPose(Axis.ZP.rotationDegrees(side * -110.0f));
+
+                    float scale = 0.018f;
+                    poseStack.scale(scale, scale, scale);
+
+                    collector.submitCustomGeometry(poseStack, SOLID_KNIFE, (pose, out) -> {
+                        karambitMesh.emit(pose, out, palette, boostedLight);
+                    });
+                }
                 break;
             }
             case KATANA: {
-                // Katana Stance & Angled Blade
-                poseStack.translate(side * 0.45f, -0.52f, -0.70f);
-                poseStack.mulPose(Axis.XP.rotationDegrees(-50.0f));
-                poseStack.mulPose(Axis.YP.rotationDegrees(side * 25.0f));
-                poseStack.mulPose(Axis.ZP.rotationDegrees(side * 15.0f));
+                if (inspecting) {
+                    // Katana Inspection Tilt & Sweep
+                    float tilt = (float) Math.sin(t * Math.PI * 2) * 35.0f;
+                    poseStack.translate(side * 0.45f, -0.48f, -0.66f);
+                    poseStack.mulPose(Axis.XP.rotationDegrees(-50.0f + tilt));
+                    poseStack.mulPose(Axis.YP.rotationDegrees(side * (25.0f + (float) Math.sin(t * Math.PI) * 20.0f)));
+                    poseStack.mulPose(Axis.ZP.rotationDegrees(side * (15.0f + tilt * 0.5f)));
 
-                float scale = 0.022f;
-                poseStack.scale(scale, scale, scale);
+                    float scale = 0.022f;
+                    poseStack.scale(scale, scale, scale);
 
-                collector.submitCustomGeometry(poseStack, SOLID_KNIFE, (pose, out) -> {
-                    katanaMesh.emit(pose, out, palette, boostedLight);
-                });
+                    collector.submitCustomGeometry(poseStack, SOLID_KNIFE, (pose, out) -> {
+                        katanaMesh.emit(pose, out, palette, boostedLight);
+                    });
+                } else {
+                    poseStack.translate(side * 0.45f, -0.52f, -0.70f);
+                    poseStack.mulPose(Axis.XP.rotationDegrees(-50.0f));
+                    poseStack.mulPose(Axis.YP.rotationDegrees(side * 25.0f));
+                    poseStack.mulPose(Axis.ZP.rotationDegrees(side * 15.0f));
+
+                    float scale = 0.022f;
+                    poseStack.scale(scale, scale, scale);
+
+                    collector.submitCustomGeometry(poseStack, SOLID_KNIFE, (pose, out) -> {
+                        katanaMesh.emit(pose, out, palette, boostedLight);
+                    });
+                }
                 break;
             }
             case RED_DAGGER: {
-                // Red Star Dagger / Combat Knife
-                poseStack.translate(side * 0.40f, -0.40f, -0.60f);
-                poseStack.mulPose(Axis.XP.rotationDegrees(-70.0f));
-                poseStack.mulPose(Axis.YP.rotationDegrees(side * 45.0f));
-                poseStack.mulPose(Axis.ZP.rotationDegrees(side * -20.0f));
+                if (inspecting) {
+                    float spin = t * 360.0f;
+                    poseStack.translate(side * 0.40f, -0.38f, -0.58f);
+                    poseStack.mulPose(Axis.XP.rotationDegrees(-70.0f));
+                    poseStack.mulPose(Axis.YP.rotationDegrees(side * (45.0f + spin)));
+                    poseStack.mulPose(Axis.ZP.rotationDegrees(side * -20.0f));
 
-                float scale = 0.022f;
-                poseStack.scale(scale, scale, scale);
+                    float scale = 0.022f;
+                    poseStack.scale(scale, scale, scale);
 
-                collector.submitCustomGeometry(poseStack, SOLID_KNIFE, (pose, out) -> {
-                    butterflyBlade.emit(pose, out, palette, boostedLight);
-                    butterflyHandle1.emit(pose, out, palette, boostedLight);
-                });
+                    collector.submitCustomGeometry(poseStack, SOLID_KNIFE, (pose, out) -> {
+                        butterflyBlade.emit(pose, out, palette, boostedLight);
+                        butterflyHandle1.emit(pose, out, palette, boostedLight);
+                    });
+                } else {
+                    poseStack.translate(side * 0.40f, -0.40f, -0.60f);
+                    poseStack.mulPose(Axis.XP.rotationDegrees(-70.0f));
+                    poseStack.mulPose(Axis.YP.rotationDegrees(side * 45.0f));
+                    poseStack.mulPose(Axis.ZP.rotationDegrees(side * -20.0f));
+
+                    float scale = 0.022f;
+                    poseStack.scale(scale, scale, scale);
+
+                    collector.submitCustomGeometry(poseStack, SOLID_KNIFE, (pose, out) -> {
+                        butterflyBlade.emit(pose, out, palette, boostedLight);
+                        butterflyHandle1.emit(pose, out, palette, boostedLight);
+                    });
+                }
                 break;
             }
             default:
