@@ -37,11 +37,16 @@ public class CosmeticsModule extends Module {
         SwordModel(String label) { this.label = label; }
     }
 
-    // Character Skins / Models
+    // Character Skins / Models (Authentic Anubis Designs)
     public enum CharacterSkin {
         NONE("Normal Player"),
-        TUNG_TUNG_SAHUR("Tung Tung Tung Sahur (Wooden Bedug)"),
-        PHARAOH("Pharaoh Headdress");
+        TUNG_TUNG_SAHUR("Tung Tung Tung Sahur"),
+        SAKURA("Sakura"),
+        LUNA("Luna"),
+        MIKA("Mika"),
+        AOI("Aoi"),
+        MIKU("Miku"),
+        TRALALERO("Tralalero");
 
         public final String label;
         CharacterSkin(String label) { this.label = label; }
@@ -94,71 +99,7 @@ public class CosmeticsModule extends Module {
 
     @Override
     public void onRenderWorld3D(PoseStack poseStack, Camera camera, float tickDelta) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.level == null) return;
-        if (!isEnabled()) return;
-
-        // Render Tung Tung Sahur character rig when enabled
-        if (getCharacterSkin() == CharacterSkin.TUNG_TUNG_SAHUR && showThirdPerson.get()) {
-            com.redstarclient.cosmetics.AnubisCharacterRenderer.renderTung(mc.player, poseStack, camera, tickDelta);
-        }
-    }
-
-    /**
-     * Renders the authentic Tung Tung Tung Sahur wooden bedug/drum companion model
-     * hovering next to / equipped on the player with animated drum-beating motion.
-     */
-    private void renderTungTungSahur(Player p, float tickDelta) {
-        double px = Mth.lerp((double) tickDelta, p.xo, p.getX());
-        double py = Mth.lerp((double) tickDelta, p.yo, p.getY());
-        double pz = Mth.lerp((double) tickDelta, p.zo, p.getZ());
-
-        float bodyYaw = Mth.lerp(tickDelta, p.yBodyRotO, p.yBodyRot);
-        float rad = (float) Math.toRadians(bodyYaw);
-
-        // Position: right shoulder floating companion (bedug drum)
-        double ox = -Math.sin(rad) * 0.75;
-        double oz = Math.cos(rad) * 0.75;
-        double drumX = px + ox;
-        double drumY = py + 0.95 + (Math.sin((System.currentTimeMillis() % 2000) / 2000.0 * Math.PI * 2) * 0.06);
-        double drumZ = pz + oz;
-
-        // 1. Bedug Log Barrel (Cylinder / Box approximation in dark wood & red bands)
-        AABB logBox = new AABB(drumX - 0.28, drumY - 0.25, drumZ - 0.28, drumX + 0.28, drumY + 0.35, drumZ + 0.28);
-        int woodColor = RenderUtils.toARGB(0.48f, 0.26f, 0.14f, 0.88f); // Rich warm wood
-        int woodOutline = RenderUtils.toARGB(0.85f, 0.12f, 0.12f, 0.95f); // Crimson red rim band
-        net.minecraft.gizmos.GizmoStyle logStyle = net.minecraft.gizmos.GizmoStyle.strokeAndFill(woodOutline, 1.8f, woodColor);
-
-        try {
-            net.minecraft.gizmos.Gizmos.cuboid(logBox, logStyle).setAlwaysOnTop();
-
-            // 2. Drum Membrane & Knocker (Sahur stick)
-            if (drumAnimation.get()) {
-                double beatPhase = (System.currentTimeMillis() % 400) / 400.0;
-                double stickOffset = Math.sin(beatPhase * Math.PI) * 0.15;
-                AABB stickBox = new AABB(drumX - 0.05, drumY + 0.35 + stickOffset, drumZ - 0.05,
-                                         drumX + 0.05, drumY + 0.55 + stickOffset, drumZ + 0.05);
-                int stickColor = RenderUtils.toARGB(0.95f, 0.75f, 0.20f, 0.95f); // Gold striker
-                net.minecraft.gizmos.GizmoStyle stickStyle = net.minecraft.gizmos.GizmoStyle.fill(stickColor);
-                net.minecraft.gizmos.Gizmos.cuboid(stickBox, stickStyle).setAlwaysOnTop();
-            }
-
-            // 3. Red Aura Glow
-            if (redAura.get()) {
-                AABB glowBox = logBox.inflate(0.06);
-                int auraColor = RenderUtils.toARGB(0.90f, 0.10f, 0.10f, 0.18f);
-                net.minecraft.gizmos.GizmoStyle auraStyle = net.minecraft.gizmos.GizmoStyle.stroke(auraColor, 1.2f);
-                net.minecraft.gizmos.Gizmos.cuboid(glowBox, auraStyle).setAlwaysOnTop();
-            }
-
-            // 4. Billboard Tag: "TUNG TUNG SAHUR"
-            BlockPos tagPos = BlockPos.containing(drumX, drumY + 0.65, drumZ);
-            int tagTextColor = RenderUtils.toARGB(1.0f, 0.2f, 0.2f, 1.0f);
-            int tagBgColor = RenderUtils.toARGB(0.0f, 0.0f, 0.0f, 0.75f);
-            net.minecraft.gizmos.Gizmos.billboardTextOverBlock("Tung Tung Tung Sahur", tagPos, tagTextColor, tagBgColor, 0.85f)
-                    .setAlwaysOnTop();
-
-        } catch (Throwable ignored) {}
+        // Character skin rendering is handled directly by CharacterLayer on the player entity
     }
 
     @Override

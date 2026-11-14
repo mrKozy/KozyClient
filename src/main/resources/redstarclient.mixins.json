@@ -30,7 +30,9 @@
     "ItemInHandRendererMixin",
     "LevelExtractorMixin",
     "WebBlockMixin",
-    "PlayerMixin"
+    "PlayerMixin",
+    "AvatarRendererMixin",
+    "LivingEntityRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 0
