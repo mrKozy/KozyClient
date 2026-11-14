@@ -1,4 +1,4 @@
-// ☭ Red Star Client — ItemInHandRendererMixin (1.7/1.8 Sword PvP Animations)
+// ☭ Red Star Client — ItemInHandRendererMixin (1.7/1.8 Sword PvP Animations & Custom 3D Knife Replacement)
 package com.redstarclient.fabric.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -33,12 +33,47 @@ public abstract class ItemInHandRendererMixin {
     @Shadow public abstract void renderItem(LivingEntity entity, ItemStack itemStack, ItemDisplayContext displayContext, PoseStack poseStack, SubmitNodeCollector buffer, int combinedLight);
 
     /**
+     * Replaces the held sword with the authentic 3D Knife (Butterfly, Karambit, Katana)
+     * textured with knife_base.png and animated with CS:GO inspect tricks.
+     */
+    @Inject(method = "renderItem", at = @At("HEAD"), cancellable = true)
+    private void redstar$renderCustomKnife(
+            LivingEntity entity,
+            ItemStack itemStack,
+            ItemDisplayContext displayContext,
+            PoseStack poseStack,
+            SubmitNodeCollector buffer,
+            int combinedLight,
+            CallbackInfo ci
+    ) {
+        if (displayContext != ItemDisplayContext.FIRST_PERSON_RIGHT_HAND && displayContext != ItemDisplayContext.FIRST_PERSON_LEFT_HAND) {
+            return;
+        }
+        if (itemStack.isEmpty() || !itemStack.is(ItemTags.SWORDS)) {
+            return;
+        }
+        com.redstarclient.module.render.CosmeticsModule cos = RedStarClient.MODULES != null ? RedStarClient.MODULES.get(com.redstarclient.module.render.CosmeticsModule.class) : null;
+        if (cos == null || !cos.isEnabled() || cos.getSwordModel() == com.redstarclient.module.render.CosmeticsModule.SwordModel.DEFAULT) {
+            return;
+        }
+
+        boolean isRightHand = (displayContext == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND);
+        int side = isRightHand ? 1 : -1;
+
+        if (com.redstarclient.cosmetics.knife.KnifeRenderer.renderKnife(
+                poseStack, buffer, combinedLight, itemStack, cos.getSwordModel(), side
+        )) {
+            ci.cancel();
+        }
+    }
+
+    /**
      * Prevents sword from dropping / re-equipping downwards when attacking or clicking.
      * Restores classic 1.7 / 1.8 sword responsiveness.
      */
     @Inject(method = "tick", at = @At("TAIL"))
     private void redstar$preventReEquipDip(CallbackInfo ci) {
-        SwordAnimationModule mod = RedStarClient.MODULES.get(SwordAnimationModule.class);
+        SwordAnimationModule mod = RedStarClient.MODULES != null ? RedStarClient.MODULES.get(SwordAnimationModule.class) : null;
         if (mod != null && mod.isPreventReEquip()) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null && mc.player.getMainHandItem().is(ItemTags.SWORDS)) {
@@ -65,7 +100,7 @@ public abstract class ItemInHandRendererMixin {
             int combinedLight,
             CallbackInfo ci) {
 
-        SwordAnimationModule mod = RedStarClient.MODULES.get(SwordAnimationModule.class);
+        SwordAnimationModule mod = RedStarClient.MODULES != null ? RedStarClient.MODULES.get(SwordAnimationModule.class) : null;
         if (mod == null || !mod.isEnabled()) return;
         if (!stack.is(ItemTags.SWORDS)) return;
 
@@ -76,11 +111,8 @@ public abstract class ItemInHandRendererMixin {
         boolean isHoldingUse = mc.options.keyUse.isDown();
         boolean isBlocking = mod.isBlockHit() && isHoldingUse;
 
-        com.redstarclient.module.render.CosmeticsModule cos = RedStarClient.MODULES.get(com.redstarclient.module.render.CosmeticsModule.class);
-        boolean hasCosmetic = cos != null && cos.isEnabled() && cos.getSwordModel() != com.redstarclient.module.render.CosmeticsModule.SwordModel.DEFAULT;
-
         boolean hasCustomTransform = mod.getScale() != 1.0f || mod.getPosX() != 0.0f || mod.getPosY() != 0.0f || mod.getPosZ() != 0.0f;
-        if (!isBlocking && !hasCustomTransform && !hasCosmetic) {
+        if (!isBlocking && !hasCustomTransform) {
             return;
         }
 
@@ -89,31 +121,6 @@ public abstract class ItemInHandRendererMixin {
         int side = isRightHand ? 1 : -1;
 
         poseStack.pushPose();
-
-        // Custom Anubis CS:GO Knife 3D Models & Textures (Butterfly, Karambit, Katana, Red Dagger)
-        if (hasCosmetic) {
-            com.redstarclient.module.render.CosmeticsModule.SwordModel sm = cos.getSwordModel();
-            this.applyItemArmTransform(poseStack, arm, equipProgress);
-
-            if (isBlocking) {
-                poseStack.translate(side * -0.14142136f, 0.08f, 0.14142136f);
-                poseStack.mulPose(Axis.XP.rotationDegrees(-102.25f));
-                poseStack.mulPose(Axis.YP.rotationDegrees(side * 13.365f));
-                poseStack.mulPose(Axis.ZP.rotationDegrees(side * 78.05f));
-            }
-            if (swingProgress > 0.0f) {
-                this.swingArm(swingProgress, poseStack, side, arm);
-            }
-
-            boolean rendered = com.redstarclient.cosmetics.knife.KnifeRenderer.renderKnife(
-                poseStack, buffer, combinedLight, stack, sm, side, swingProgress, equipProgress
-            );
-            if (rendered) {
-                poseStack.popPose();
-                ci.cancel();
-                return;
-            }
-        }
 
         // Custom scale & position offsets
         if (mod.getScale() != 1.0f) {

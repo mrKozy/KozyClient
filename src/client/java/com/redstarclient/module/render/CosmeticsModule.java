@@ -144,6 +144,11 @@ public class CosmeticsModule extends Module {
         if (ImGui.button("Inspect Hotkey: [" + keyName + "]##btnInspectKey")) {
             listeningForInspectKey = true;
         }
+        ImGui.sameLine();
+        if (ImGui.button("Inspect Animation testen##btnTestInspect")) {
+            com.redstarclient.cosmetics.knife.InspectHandler.triggerInspect();
+        }
+        ImGui.textColored(0.7f, 0.7f, 0.7f, 1.0f, "Tipp: Taste im Spiel druecken oder gedrueckt halten fuer Spin!");
         if (listeningForInspectKey) {
             Minecraft mc = Minecraft.getInstance();
             if (mc != null && mc.getWindow() != null) {

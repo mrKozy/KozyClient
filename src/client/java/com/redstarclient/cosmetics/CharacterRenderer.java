@@ -236,9 +236,9 @@ public final class CharacterRenderer {
             }
         }
 
-        // Boost lighting floor so textures are vibrant and clear, not murky/dark
-        int block = Math.max(12, light & 0xFFFF);
-        int sky = Math.max(12, (light >> 16) & 0xFFFF);
+        // Boost lighting floor so textures are vibrant, luminous and clear, not murky/dark
+        int block = Math.max(200, light & 0xFFFF);
+        int sky = Math.max(220, (light >> 16) & 0xFFFF);
         int clearLight = (sky << 16) | block;
 
         int[] quads = s.quads;
@@ -249,7 +249,16 @@ public final class CharacterRenderer {
         for (int q = 0; q < quads.length; q++) {
             int v = quads[q];
             int o = v * 6;
-            int c = alpha == 255 ? color[v] : color[v] & 16777215 | alpha << 24;
+            int baseC = color[v];
+            int r = (baseC >> 16) & 0xFF;
+            int g = (baseC >> 8) & 0xFF;
+            int b = baseC & 0xFF;
+            // Gamma / vibrancy boost to fix darkness and pop beautifully
+            r = Math.min(255, (int) (r * 1.25f + 14));
+            g = Math.min(255, (int) (g * 1.25f + 14));
+            b = Math.min(255, (int) (b * 1.25f + 14));
+            int boosted = (r << 16) | (g << 8) | b;
+            int c = alpha == 255 ? boosted : (boosted & 0xFFFFFF) | (alpha << 24);
             int l = glow != null && glow[v] != 0 ? 15728880 : clearLight;
             out.addVertex(buf[o], buf[o + 1], buf[o + 2], c, uv[v * 2], uv[v * 2 + 1], overlay, l, buf[o + 3], buf[o + 4], buf[o + 5]);
         }
